@@ -58,10 +58,31 @@
                     <div class="feature-icon text-4xl mb-4">💬</div>
                     <h3>Neural Chat</h3>
                     <p class="mb-6">Communicate with advanced AI logic in real-time.</p>
-                    <div id="chatBox" class="text-left mb-4"></div>
+                    <div id="chatBox" class="text-left mb-4" style="height: 250px;"></div>
+                    
+                    <div id="agentLogsContainer" class="hidden text-left mb-4 p-3 bg-slate-900 rounded-xl border border-slate-700 shadow-inner">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-[10px] font-black text-rose-400 uppercase tracking-widest">Agent Terminal</span>
+                            <span class="flex h-2 w-2 relative">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
+                            </span>
+                        </div>
+                        <ul id="agentLogs" class="space-y-1 h-32 overflow-y-auto text-xs font-mono text-green-400"></ul>
+                        
+                        <div id="confirmationBox" class="hidden mt-3 p-3 bg-indigo-900/50 rounded-lg border border-indigo-500 flex justify-between items-center">
+                            <span class="text-xs text-indigo-200" id="confirmationText">AI needs confirmation to proceed.</span>
+                            <div class="flex gap-2">
+                                <button onclick="confirmAction('confirm')" class="px-3 py-1 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded">Confirm</button>
+                                <button onclick="confirmAction('cancel')" class="px-3 py-1 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded">Cancel</button>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="space-y-3">
                         <div class="flex gap-2">
                             <input type="text" id="messageInput" placeholder="Command..." class="flex-grow">
+                            <button onclick="stopAgent()" class="px-4 py-2 bg-red-600 text-white font-bold rounded-lg hover:bg-red-700 transition shadow-lg text-sm" title="Stop Agent">⏹</button>
                             <button onclick="sendMessage()" class="p-3 bg-rose-500 text-white rounded-full hover:scale-110 transition-transform shadow-lg">
                                 <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
                             </button>

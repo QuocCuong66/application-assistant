@@ -386,6 +386,22 @@ input:focus {
     box-shadow: 0 0 25px rgba(254, 214, 227, 0.7);
 }
 
+.state-observing .avatar-orb {
+    background: radial-gradient(circle at 30% 30%, #e0c3fc, #8ec5fc);
+    animation: float 3s ease-in-out infinite;
+}
+.state-observing .avatar-orb::after {
+    box-shadow: 0 0 20px rgba(224, 195, 252, 0.6);
+}
+
+.state-waiting_confirmation .avatar-orb {
+    background: radial-gradient(circle at 30% 30%, #fbc2eb, #a6c1ee);
+    animation: pulse 1s infinite;
+}
+.state-waiting_confirmation .avatar-orb::after {
+    box-shadow: 0 0 30px rgba(251, 194, 235, 0.8);
+}
+
 .state-speaking .avatar-orb {
     background: radial-gradient(circle at 30% 30%, #ff9a9e, #fecfef);
     transform: scale(1.05);

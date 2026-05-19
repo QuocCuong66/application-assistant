@@ -1,4 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, Depends, UploadFile, File
+from fastapi.responses import StreamingResponse
 from database import get_db
 import datetime
 from typing import List, Dict, Any
@@ -13,6 +14,7 @@ from schemas import ChatRequest, ChatResponse, HistoryItem
 from api.deps import check_rate_limit, get_current_user, check_usage_limit
 
 from api.automation import manager as ws_manager
+from services.agent_loop import run_agent_loop
 
 router = APIRouter()
 brain = Brain()
@@ -82,6 +84,35 @@ async def chat_endpoint(
     return ChatResponse(
         response=ai_response,
         action_result=action_result
+    )
+
+@router.post("/agent/chat")
+async def agent_chat_endpoint(
+    request: ChatRequest,
+    fastapi_req: Request,
+    db = Depends(get_db),
+    current_user: dict = Depends(get_current_user),
+    usage: dict = Depends(check_usage_limit)
+):
+    client_ip = fastapi_req.client.host
+    check_rate_limit(client_ip)
+
+    user_message = request.message
+    logging.info(f"Agent Loop Input from {current_user.get('username', 'unknown')}: {user_message}")
+
+    if not ws_manager.is_connected(current_user["id"]):
+        raise HTTPException(status_code=400, detail="Desktop Agent chưa kết nối. Hãy chạy python desktop_agent.py")
+
+    # Increment usage count in MongoDB
+    db.usage.update_one(
+        {"_id": ObjectId(usage["_id"])},
+        {"$inc": {"request_count": 1}}
+    )
+
+    # Start the async generator
+    return StreamingResponse(
+        run_agent_loop(current_user["id"], user_message),
+        media_type="application/x-ndjson"
     )
 
 

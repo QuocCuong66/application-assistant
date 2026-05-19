@@ -5,10 +5,14 @@ import logging
 from typing import Dict
 from datetime import datetime
 from bson import ObjectId
+import uuid
+import asyncio
 
 from database import get_db
 from schemas import TrainedTaskCreate, TrainedTaskResponse, TrainedTaskUpdate
 from api.deps import get_current_user
+from config import AGENT_TOKEN
+from pydantic import BaseModel
 
 router = APIRouter(prefix="/automation", tags=["automation"])
 
@@ -16,16 +20,31 @@ router = APIRouter(prefix="/automation", tags=["automation"])
 class ConnectionManager:
     def __init__(self):
         self.active_connections: Dict[str, WebSocket] = {}
+        self.pending_requests: Dict[str, Dict[str, asyncio.Future]] = {}
+        self.user_events: Dict[str, asyncio.Event] = {}
+        self.stop_flags: Dict[str, bool] = {}
+        self.user_confirm_results: Dict[str, str] = {} # 'confirm' or 'cancel'
 
     async def connect(self, user_id: str, websocket: WebSocket):
         await websocket.accept()
         self.active_connections[user_id] = websocket
+        if user_id not in self.pending_requests:
+            self.pending_requests[user_id] = {}
+        self.stop_flags[user_id] = False
         logging.info(f"Agent connected for user: {user_id}")
 
     def disconnect(self, user_id: str):
         if user_id in self.active_connections:
             del self.active_connections[user_id]
             logging.info(f"Agent disconnected for user: {user_id}")
+        if user_id in self.pending_requests:
+            for req_id, future in list(self.pending_requests[user_id].items()):
+                if not future.done():
+                    future.set_exception(Exception("Agent disconnected"))
+            del self.pending_requests[user_id]
+        if user_id in self.user_events:
+            self.user_confirm_results[user_id] = 'cancel'
+            self.user_events[user_id].set()
 
     def is_connected(self, user_id: str) -> bool:
         return user_id in self.active_connections
@@ -40,10 +59,42 @@ class ConnectionManager:
                 self.disconnect(user_id)
         return False
 
+    async def send_command_and_wait(self, user_id: str, command: dict, timeout=30):
+        if user_id not in self.active_connections:
+            return {"success": False, "error": "Agent offline"}
+            
+        request_id = str(uuid.uuid4())
+        command["request_id"] = request_id
+        future = asyncio.get_event_loop().create_future()
+        
+        if user_id not in self.pending_requests:
+            self.pending_requests[user_id] = {}
+        self.pending_requests[user_id][request_id] = future
+        
+        try:
+            await self.active_connections[user_id].send_json(command)
+            result = await asyncio.wait_for(future, timeout=timeout)
+            return result
+        except asyncio.TimeoutError:
+            if user_id in self.pending_requests and request_id in self.pending_requests[user_id]:
+                del self.pending_requests[user_id][request_id]
+            return {"success": False, "error": "Timeout"}
+        except Exception as e:
+            if user_id in self.pending_requests and request_id in self.pending_requests[user_id]:
+                del self.pending_requests[user_id][request_id]
+            return {"success": False, "error": str(e)}
+
 manager = ConnectionManager()
 
+class ConfirmRequest(BaseModel):
+    action: str # "confirm" or "cancel"
+
 @router.websocket("/ws/{user_id}")
-async def websocket_endpoint(websocket: WebSocket, user_id: str):
+async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = None):
+    if token != AGENT_TOKEN:
+        await websocket.close(code=4001, reason="Unauthorized")
+        return
+
     await manager.connect(user_id, websocket)
     db = get_db()
     try:
@@ -61,11 +112,41 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
                     }
                     db.trained_tasks.insert_one(task_doc)
                     logging.info(f"Task '{task_doc['name']}' saved successfully for user {user_id}.")
+                
+                elif data.get("type") == "tool_result":
+                    req_id = data.get("request_id")
+                    if req_id and user_id in manager.pending_requests:
+                        if req_id in manager.pending_requests[user_id]:
+                            future = manager.pending_requests[user_id][req_id]
+                            if not future.done():
+                                future.set_result(data)
+                            del manager.pending_requests[user_id][req_id]
                     
             except json.JSONDecodeError:
                 logging.warning(f"Invalid JSON received from agent {user_id}: {data_str}")
     except WebSocketDisconnect:
         manager.disconnect(user_id)
+
+@router.post("/agent/stop")
+async def stop_agent(current_user: dict = Depends(get_current_user)):
+    user_id = current_user["id"]
+    manager.stop_flags[user_id] = True
+    if user_id in manager.user_events:
+        manager.user_confirm_results[user_id] = 'cancel'
+        manager.user_events[user_id].set()
+    
+    # Optional: Send control stop to desktop agent
+    await manager.send_command(user_id, {"type": "control", "command": "stop"})
+    return {"message": "Agent stop signal sent."}
+
+@router.post("/agent/confirm")
+async def confirm_agent_action(req: ConfirmRequest, current_user: dict = Depends(get_current_user)):
+    user_id = current_user["id"]
+    if user_id in manager.user_events:
+        manager.user_confirm_results[user_id] = req.action
+        manager.user_events[user_id].set()
+        return {"message": f"Action {req.action} received."}
+    return {"message": "No pending action to confirm."}
 
 @router.post("/training/start")
 async def start_training(current_user: dict = Depends(get_current_user)):
