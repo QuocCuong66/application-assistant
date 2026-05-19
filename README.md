@@ -21,6 +21,12 @@
 4. Chạy server web:
    ```powershell
    python main.py
+   py desktop_agent.py 
+   
+   Server URL: Bạn cứ nhấn Enter để dùng mặc định (ws://localhost:8000/automation/ws).
+   USER ID: Nhập ID người dùng của bạn (thường là 1 nếu bạn là user đầu tiên, hoặc xem trên giao diện web).
+   AGENT_TOKEN: Nhập default-secret-token-123 (đây là token mặc định trong file cấu hình).
+   ID: 69ff169fe03ca96247b98195
    ```
 5. Mở browser:
    - http://localhost:8000
@@ -59,130 +65,85 @@ Ngân hàng: Chọn NCB
 
 A complete production-ready AI Assistant backend built with Python.
 
-## Prerequisites
-- Python 3.8+
-- [FFmpeg](https://ffmpeg.org/download.html) (Required by Whisper for audio processing)
-- Microphone (for voice features)
+## Cấu trúc Dự án
+Dự án sử dụng duy nhất một repository cho cả Frontend (static) và Backend (FastAPI). 
+- `static/`: Chứa giao diện Frontend (HTML, CSS, JS).
+- `api/`, `main.py`, `config.py`: Chứa Backend FastAPI & WebSockets.
+- `desktop_agent.py`: Tool chạy **ở máy cục bộ (local)** để điều khiển máy tính.
 
-## Installation
+---
 
-### 1. Kiểm tra Python
-Project yêu cầu Python 3.8 hoặc mới hơn.
+## 1. Hướng dẫn chạy Local (Phát triển / Test)
 
-Trên Windows PowerShell:
-```powershell
-python --version
-```
+### Cài đặt môi trường
+1. Yêu cầu Python 3.8+ và [FFmpeg](https://ffmpeg.org/download.html).
+2. Mở Terminal / PowerShell và tạo môi trường ảo:
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+3. Cài dependencies:
+   ```powershell
+   python -m pip install -r requirements.txt
+   ```
 
-Trên macOS / Linux:
-```bash
-python3 --version
-```
-
-Nếu bạn chưa cài, tải Python từ https://www.python.org/downloads/ và chọn "Add Python to PATH" trên Windows.
-
-### 2. Tạo môi trường ảo
-Sử dụng virtual environment để tách project khỏi hệ thống chung.
-
-Trên Windows PowerShell:
-```powershell
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-```
-
-Trên Windows CMD:
-```cmd
-python -m venv .venv
-.venv\Scripts\activate.bat
-```
-
-Trên macOS / Linux:
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-```
-
-### 3. Cài dependencies
-Sau khi kích hoạt môi trường ảo:
-```bash
-pip install --upgrade pip
-pip install -r requirements.txt
-```
-
-### 4. Tạo file `.env`
-Tạo file `.env` ở thư mục gốc project và thêm biến môi trường:
+### Cấu hình `.env`
+Tạo file `.env` từ `.env.example`:
 ```env
 OPENAI_API_KEY=your_openai_api_key_here
-MONGO_URI="mongodb+srv://CuongProAI:rg5OlWyKYT1ovC4t@cluster0.bihl7tb.mongodb.net"
-MONGO_DB_NAME="tên_database_của_bạn"
+MONGO_URI="mongodb+srv://CuongProAI:..."
+MONGO_DB_NAME="CuongProAI"
+AGENT_TOKEN="your-super-secret-token-here"
 ```
 
-### 5. Khởi động server
-```bash
+### Chạy Server & Web
+Chạy Server API:
+```powershell
 python main.py
 ```
+Mở trình duyệt truy cập: `http://localhost:8000`
 
-Sau khi khởi động, truy cập `http://localhost:8000`.
+---
 
-## Running the Server
+## 2. Hướng dẫn Deploy Production lên Render (Backend)
 
-Start the FastAPI server:
-```bash
-python main.py
-```
-The server will run on `http://localhost:8000`.
+Dự án đã được cấu hình sẵn cho **Render.com**. Bạn **KHÔNG** deploy WebSockets lên Vercel. Bạn sẽ đưa toàn bộ repo này lên Render.
 
-## API Usage
+1. Đăng nhập [Render.com](https://render.com).
+2. Chọn **New > Web Service**, kết nối GitHub và chọn repository này.
+3. Trong cài đặt Render Web Service:
+   - **Environment**: `Python 3`
+   - **Build Command**: `pip install -r requirements.txt`
+   - **Start Command**: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+4. Cấu hình Environment Variables (Biến môi trường) trên Render:
+   - `OPENAI_API_KEY`: Key của bạn
+   - `MONGO_URI`: Chuỗi kết nối MongoDB
+   - `AGENT_TOKEN`: Mã bảo mật tự tạo
+   - `FRONTEND_URL`: Để trống hoặc điền domain nếu bạn deploy frontend riêng. Mặc định Render sẽ host luôn thư mục `static/` ở thư mục gốc (vì FastAPI phục vụ static files).
 
-Endpoint: `POST /chat`
+*Sau khi deploy xong, bạn sẽ có URL dạng: `https://your-app.onrender.com`.*
+*Truy cập trực tiếp URL này để dùng giao diện Web.*
 
-**Request:**
-```json
-{
-  "message": "Hello, how are you?"
-}
-```
+---
 
-**Response:**
-```json
-{
-  "response": "I'm doing well, thank you! How can I help you today?",
-  "action_result": null
-}
-```
-If you send "open chrome", `action_result` will show the execution status.
+## 3. Hướng dẫn chạy Desktop Agent (Local)
 
-## MongoDB API Endpoints
+Lưu ý: `desktop_agent.py` **không** deploy lên Render. File này CHỈ chạy trên máy tính mà bạn muốn điều khiển.
 
-Các route MongoDB dùng cùng token của user:
+1. Mở một Terminal mới.
+2. Kích hoạt môi trường ảo: `.\.venv\Scripts\Activate.ps1`
+3. Chạy lệnh:
+   ```powershell
+   python desktop_agent.py
+   ```
+4. Tool sẽ yêu cầu bạn nhập các thông tin sau (nếu không có trong file `.env`):
+   - **Server URL**: Nhập địa chỉ WebSocket Backend của bạn trên Render. (Ví dụ: `wss://your-app.onrender.com/automation/ws`). Nếu chạy local, bạn nhấn Enter để dùng mặc định `ws://localhost:8000/automation/ws`.
+   - **USER ID**: ID người dùng của bạn. *Cách lấy: Đăng nhập vào trang Web, nhìn xuống góc dưới màn hình sẽ có dòng "ID: 69ff..."*.
+   - **AGENT_TOKEN**: Nhập mã token bạn đã cấu hình trong `.env` của Backend.
 
-- `GET /mongo/{collection_name}`
-  - list dữ liệu từ collection MongoDB
-  - collection_name có thể là `users`, `usage`, `message_history`, `transactions`, `trained_tasks`
+5. Khi màn hình hiện `✅ Đã kết nối thành công!`, bạn có thể lên giao diện Web và bấm **Start Skill Training** hoặc ra lệnh cho AI điều khiển máy tính.
 
-- `POST /mongo/{collection_name}`
-  - insert document vào collection tương ứng
-  - body JSON là document cần lưu
+*Mẹo: Để không phải nhập lại link server mỗi lần chạy Agent, hãy thêm biến sau vào `.env` ở máy tính của bạn:*
+`BACKEND_WS_URL="wss://your-app.onrender.com/automation/ws"`
 
-- `POST /mongo/refresh`
-  - no-op endpoint; MongoDB is the primary storage and data should be stored directly there
-
-### Ví dụ curl
-
-Đọc dữ liệu users:
-```bash
-curl -H "X-Token: <your_user_token>" http://localhost:8000/mongo/users
-```
-
-Thêm document mới vào `message_history`:
-```bash
-curl -X POST -H "Content-Type: application/json" -H "X-Token: <your_user_token>" \
-  -d '{"user_id": 1, "message": "Xin chào", "response": "Chào bạn", "timestamp": "2026-05-06T00:00:00"}' \
-  http://localhost:8000/mongo/message_history
-```
-
-Refresh endpoint (no-op because MongoDB is primary storage):
-```bash
-curl -X POST -H "X-Token: <your_user_token>" http://localhost:8000/mongo/refresh
-```
 

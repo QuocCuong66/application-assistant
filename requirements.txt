@@ -18,3 +18,4 @@ pyinstaller
 # pynput
 # pyaudio
 # SpeechRecognition
+websockets
