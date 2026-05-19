@@ -1,0 +1,127 @@
+[
+    {
+        "action": "click",
+        "parameters": {
+            "x": 1043,
+            "y": 220,
+            "button": "Button.left"
+        },
+        "time": 5.97
+    },
+    {
+        "action": "click",
+        "parameters": {
+            "x": 1201,
+            "y": 536,
+            "button": "Button.left"
+        },
+        "time": 7.37
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "t"
+        },
+        "time": 8.37
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "s"
+        },
+        "time": 8.56
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "s"
+        },
+        "time": 8.75
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "t"
+        },
+        "time": 8.84
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "Key.space"
+        },
+        "time": 9.0
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "Key.backspace"
+        },
+        "time": 9.42
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "Key.backspace"
+        },
+        "time": 9.56
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "Key.backspace"
+        },
+        "time": 9.72
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "Key.backspace"
+        },
+        "time": 9.87
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "e"
+        },
+        "time": 10.09
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "s"
+        },
+        "time": 10.53
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "s"
+        },
+        "time": 10.7
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "t"
+        },
+        "time": 10.7
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "Key.enter"
+        },
+        "time": 11.42
+    },
+    {
+        "action": "click",
+        "parameters": {
+            "x": 1242,
+            "y": 651,
+            "button": "Button.left"
+        },
+        "time": 12.72
+    }
+]
