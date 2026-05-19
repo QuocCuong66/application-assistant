@@ -33,14 +33,64 @@
         </header>
 
         <!-- Auth Section -->
-        <div id="authSection" class="glass-panel max-w-md mx-auto p-10 space-y-8 text-center">
-            <div class="space-y-4">
-                <input type="text" id="username" placeholder="Username" class="w-full">
-                <input type="password" id="password" placeholder="Password" class="w-full">
+        <div id="authSection" class="fixed top-0 left-0 w-full h-full z-[60] flex items-center justify-center overflow-hidden bg-[#050a1f]">
+            <!-- Cyber Animated Background -->
+            <div class="cyber-bg-container">
+                <div class="cyber-aurora aurora-1"></div>
+                <div class="cyber-aurora aurora-2"></div>
+                <div class="cyber-aurora aurora-3"></div>
             </div>
-            <div class="flex flex-col gap-4">
-                <button onclick="login()" class="cta-button w-full">Sign In</button>
-                <button onclick="register()" class="text-slate-400 font-bold text-sm hover:text-rose-400 transition-colors">Create new account</button>
+            
+            <div class="cyber-glass-panel relative w-full max-w-[420px] p-10 mx-4 flex flex-col items-center">
+                <!-- Logo -->
+                <div class="cyber-logo-wrapper mb-6 relative flex items-center justify-center w-20 h-20 rounded-full">
+                    <div class="absolute inset-0 rounded-full cyber-glow-ring"></div>
+                    <span class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-cyan-400 to-fuchsia-500 z-10">V</span>
+                </div>
+                
+                <h2 class="text-[28px] font-black text-white mb-1 tracking-tight">Welcome Back</h2>
+                <p class="text-[11px] text-cyan-300/80 uppercase tracking-[0.2em] mb-10 font-bold">Enter the future of blockchain</p>
+                
+                <div class="w-full space-y-5">
+                    <!-- Email Input -->
+                    <div class="relative group">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-cyan-400 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        </div>
+                        <input type="text" id="username" placeholder="Email or Username" class="cyber-input w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400/50 transition-all text-sm">
+                    </div>
+                    
+                    <!-- Password Input -->
+                    <div class="relative group">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400 group-focus-within:text-cyan-400 transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                        </div>
+                        <input type="password" id="password" placeholder="Password" class="cyber-input w-full pl-12 pr-12 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400/50 transition-all text-sm">
+                        <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-cyan-400 transition-colors">
+                            <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="w-full mt-8 space-y-6">
+                    <button onclick="login()" class="cyber-btn w-full py-4 rounded-2xl font-black text-white uppercase tracking-[0.15em] text-xs relative overflow-hidden transition-all">
+                        <span class="relative z-10">Sign In</span>
+                        <div class="cyber-btn-glow absolute inset-0 opacity-0 transition-opacity"></div>
+                    </button>
+                    
+                    <div class="flex items-center justify-center gap-2 text-[10px] text-slate-400 uppercase tracking-wider font-bold">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-emerald-400"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+                        Secured by blockchain technology
+                    </div>
+                    
+                    <button onclick="register()" class="w-full text-center text-xs font-bold text-cyan-400 hover:text-fuchsia-400 transition-colors duration-300">
+                        Don't have an account? Create your future
+                    </button>
+                </div>
+                
+                <div class="absolute -bottom-10 w-full text-center">
+                    <span class="text-[9px] text-slate-500/70 uppercase tracking-[0.3em] font-bold">Powered by Vietnam Blockchain Layer 1</span>
+                </div>
             </div>
         </div>
 

@@ -29,7 +29,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # --- CẤU HÌNH ---
-DEFAULT_SERVER = "ws://localhost:8000/automation/ws" 
+DEFAULT_SERVER = os.getenv("BACKEND_WS_URL", "ws://localhost:8000/automation/ws")
 
 # Biến toàn cục để tắt agent loop
 EMERGENCY_STOP = False

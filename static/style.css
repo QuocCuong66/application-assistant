@@ -426,3 +426,142 @@ input:focus {
     text-transform: uppercase;
     letter-spacing: 2px;
 }
+
+/* =========================================
+   CYBER LOGIN UI (Glassmorphism & Blockchain)
+   ========================================= */
+
+.cyber-bg-container {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    z-index: 0;
+    background: #050a1f; /* Navy Dark Base */
+}
+
+/* Aurora / Plasma Animations */
+.cyber-aurora {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: 0.5;
+    mix-blend-mode: screen;
+    will-change: transform, opacity;
+}
+
+.aurora-1 {
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, #00f2fe, rgba(0,242,254,0));
+    top: -200px;
+    left: -200px;
+    animation: drift 15s infinite alternate ease-in-out;
+}
+
+.aurora-2 {
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, #4facfe, rgba(79,172,254,0));
+    bottom: -150px;
+    right: -100px;
+    animation: drift 12s infinite alternate-reverse ease-in-out;
+}
+
+.aurora-3 {
+    width: 700px;
+    height: 700px;
+    background: radial-gradient(circle, #fa709a, rgba(250,112,154,0));
+    top: 30%;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: pulsePlasma 10s infinite alternate ease-in-out;
+    opacity: 0.3;
+}
+
+@keyframes drift {
+    0% { transform: translate(0, 0) scale(1); }
+    100% { transform: translate(100px, 50px) scale(1.2); }
+}
+
+@keyframes pulsePlasma {
+    0% { transform: translate(-50%, -10%) scale(0.8); opacity: 0.2; }
+    100% { transform: translate(-50%, 10%) scale(1.1); opacity: 0.4; }
+}
+
+/* Glass Panel */
+.cyber-glass-panel {
+    z-index: 10;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 24px;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255,255,255,0.1);
+    animation: cyberFadeIn 0.8s ease-out;
+}
+
+@keyframes cyberFadeIn {
+    from { opacity: 0; transform: translateY(20px) scale(0.95); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Logo Ring */
+.cyber-logo-wrapper {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: inset 0 0 20px rgba(0,242,254,0.2);
+}
+
+.cyber-glow-ring {
+    border: 2px solid transparent;
+    background: linear-gradient(45deg, #00f2fe, #fa709a) border-box;
+    -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: destination-out;
+    mask-composite: exclude;
+    animation: spinRing 4s linear infinite;
+}
+
+@keyframes spinRing {
+    100% { transform: rotate(360deg); }
+}
+
+/* Cyber Button */
+.cyber-btn {
+    background: linear-gradient(90deg, #00f2fe, #4facfe, #fa709a);
+    background-size: 200% auto;
+    border: none;
+    box-shadow: 0 0 20px rgba(0, 242, 254, 0.3);
+    animation: gradientShift 3s linear infinite;
+}
+
+.cyber-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 25px rgba(0, 242, 254, 0.5);
+}
+
+.cyber-btn:active {
+    transform: translateY(1px);
+}
+
+.cyber-btn-glow {
+    background: inherit;
+    filter: blur(10px);
+    z-index: -1;
+}
+
+.cyber-btn:hover .cyber-btn-glow {
+    opacity: 0.7;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+    .cyber-aurora, .cyber-glow-ring, .cyber-btn {
+        animation: none !important;
+    }
+}
