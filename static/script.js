@@ -243,7 +243,7 @@ async function saveTask() {
         showAlert("Task will be saved when agent finishes!");
         document.getElementById("saveTaskDiv").style.display = "none";
         document.getElementById("taskNameInput").value = "";
-        loadTrainedTasks();
+        setTimeout(() => loadTrainedTasks(), 1500); // Wait for agent to upload data via WS
     }
 }
 
@@ -280,46 +280,123 @@ async function sendMessage() {
     document.getElementById("messageInput").value = "";
     
     setAvatarState('thinking');
+    document.getElementById("agentLogsContainer").classList.remove("hidden");
+    const logsUl = document.getElementById("agentLogs");
+    logsUl.innerHTML = ""; // clear previous logs
     
     try {
-        const res = await fetch(`${API_URL}/chat`, {
+        const res = await fetch(`${API_URL}/agent/chat`, {
             method: "POST", headers: { "Content-Type": "application/json", "X-Token": token },
             body: JSON.stringify({ message: msg })
         });
-        const data = await res.json();
         
-        if (res.status === 200) {
-            chatBox.innerHTML += `<div class="ai-message"><b>AI:</b> ${data.response}</div>`;
-            
-            if (data.action_result && data.action_result.includes("Sent")) {
-                setAvatarState('acting');
-                setTimeout(() => setAvatarState('idle'), 3000);
-            } else if (data.action_result === "Agent Offline") {
-                setAvatarState('error');
-                setTimeout(() => setAvatarState('idle'), 3000);
-                showAlert("Desktop Agent is offline. Action not performed.");
-            } else {
-                const utterance = new SpeechSynthesisUtterance(data.response);
-                utterance.onstart = () => {
-                    setAvatarState('speaking');
-                    document.getElementById("stopSpeakBtn").style.display = "block";
-                };
-                utterance.onend = () => {
-                    setAvatarState('idle');
-                    document.getElementById("stopSpeakBtn").style.display = "none";
-                };
-                window.speechSynthesis.speak(utterance);
-            }
-        } else {
+        if (res.status === 400 || res.status === 500) {
+            const data = await res.json();
             setAvatarState('error');
             setTimeout(() => setAvatarState('idle'), 3000);
-            showAlert("Chat Error: " + (data.detail || "Unknown error"));
+            showAlert(data.detail || "Error starting agent loop.");
+            return;
         }
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder("utf-8");
+        let buffer = "";
+        
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) {
+                if (document.getElementById("avatarLabel").innerText !== 'WAITING_CONFIRMATION') {
+                    setAvatarState('idle');
+                }
+                break;
+            }
+            const chunk = decoder.decode(value, { stream: true });
+            buffer += chunk;
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // keep the last incomplete line in buffer
+            
+            for (let line of lines) {
+                if (!line.trim()) continue;
+                try {
+                    const data = JSON.parse(line);
+                    
+                    // Update state
+                    if (data.state) {
+                        setAvatarState(data.state);
+                    }
+                    
+                    // Update logs
+                    if (data.message) {
+                        const li = document.createElement("li");
+                        li.innerText = `> ${data.message}`;
+                        if (data.type === "error") li.className = "text-rose-500";
+                        if (data.type === "final") li.className = "text-amber-300 font-bold";
+                        logsUl.appendChild(li);
+                        
+                        // Limit to 50 logs
+                        while (logsUl.children.length > 50) {
+                            logsUl.removeChild(logsUl.firstChild);
+                        }
+                        logsUl.scrollTop = logsUl.scrollHeight;
+                        
+                        if (data.type === 'final') {
+                            chatBox.innerHTML += `<div class="ai-message"><b>AI:</b> ${data.message}</div>`;
+                            chatBox.scrollTop = chatBox.scrollHeight;
+                            
+                            const utterance = new SpeechSynthesisUtterance(data.message);
+                            utterance.onstart = () => document.getElementById("stopSpeakBtn").style.display = "block";
+                            utterance.onend = () => document.getElementById("stopSpeakBtn").style.display = "none";
+                            window.speechSynthesis.speak(utterance);
+                            
+                            // Hide confirmation box if it was showing
+                            document.getElementById("confirmationBox").classList.add("hidden");
+                        }
+                    }
+                    
+                    if (data.state === 'waiting_confirmation') {
+                        const confBox = document.getElementById("confirmationBox");
+                        confBox.classList.remove("hidden");
+                        document.getElementById("confirmationText").innerText = data.message || "AI needs confirmation to proceed.";
+                    } else {
+                        document.getElementById("confirmationBox").classList.add("hidden");
+                    }
+                } catch(e) {
+                    console.error("Error parsing JSON chunk", line, e);
+                }
+            }
+        }
+        
     } catch (e) {
         setAvatarState('error');
         setTimeout(() => setAvatarState('idle'), 3000);
+        showAlert("Connection error.");
     }
-    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+async function stopAgent() {
+    try {
+        const res = await fetch(`${API_URL}/agent/stop`, {
+            method: "POST", headers: { "X-Token": token }
+        });
+        if (res.status === 200) {
+            showAlert("Agent stop signal sent.");
+            document.getElementById("confirmationBox").classList.add("hidden");
+        }
+    } catch (e) {
+        console.error(e);
+    }
+}
+
+async function confirmAction(action) {
+    document.getElementById("confirmationBox").classList.add("hidden");
+    try {
+        await fetch(`${API_URL}/agent/confirm`, {
+            method: "POST", headers: { "Content-Type": "application/json", "X-Token": token },
+            body: JSON.stringify({ action: action })
+        });
+    } catch (e) {
+        console.error(e);
+    }
 }
 
 async function loadHistory() {
