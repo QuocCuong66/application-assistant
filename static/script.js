@@ -1,4 +1,4 @@
-const API_URL = window.location.origin;
+const API_URL = window.APP_CONFIG.API_URL;
 let token = localStorage.getItem("token");
 
 // --- Canvas Particle System ---

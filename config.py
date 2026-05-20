@@ -16,6 +16,8 @@ VNPAY_HASH_SECRET = os.getenv("VNPAY_HASH_SECRET")
 VNPAY_URL = os.getenv("VNPAY_URL", "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html")
 VNPAY_RETURN_URL = os.getenv("VNPAY_RETURN_URL", "http://localhost:8000/payment/vnpay_return")
 
+FRONTEND_ORIGIN = os.getenv("FRONTEND_ORIGIN", "https://application-assistant.vercel.app")
+
 BACKEND_WS_URL = os.getenv("BACKEND_WS_URL", "ws://localhost:8000/automation/ws")
 MONGO_URI = os.getenv("MONGO_URI")
 MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "CuongProAI")
