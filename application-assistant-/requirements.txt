@@ -1,0 +1,20 @@
+fastapi
+uvicorn
+openai
+python-dotenv
+python-multipart
+pymongo[srv]
+dnspython
+certifi
+Pillow
+requests
+pydantic
+bcrypt
+pyinstaller
+# Gỡ bỏ các thư viện nặng/không tương thích với Vercel
+# openai-whisper
+# torch
+# pyautogui
+# pynput
+# pyaudio
+# SpeechRecognition

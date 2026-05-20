@@ -1,0 +1,15 @@
+venv/
+.venv/
+__pycache__/
+*.db
+screenshots/
+recorded_actions.json
+node_modules/
+.vercel/
+.env
+*.pyc
+temp_task_*.json
+server_log.txt
+stderr.txt
+stdout.txt
+test_results.txt
