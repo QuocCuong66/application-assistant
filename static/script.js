@@ -1,4 +1,14 @@
-const API_URL = window.APP_CONFIG.API_URL;
+if (!window.APP_CONFIG || !window.APP_CONFIG.API_URL) {
+    console.error("Missing frontend config. Please check static/config.js");
+    alert("System Error: Missing APP_CONFIG. Please check static/config.js");
+}
+
+const API_URL = window.APP_CONFIG ? window.APP_CONFIG.API_URL : null;
+const WS_URL = window.APP_CONFIG ? window.APP_CONFIG.WS_URL : null;
+
+console.log("🚀 Using API_URL:", API_URL);
+console.log("🔌 Using WS_URL:", WS_URL);
+
 let token = localStorage.getItem("token");
 
 // --- Canvas Particle System ---

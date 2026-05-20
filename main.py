@@ -56,6 +56,11 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 def read_root():
     return FileResponse("static/index.html")
 
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}
+
 if __name__ == "__main__":
     logging.info("Starting AI Assistant Backend Server...")
+    logging.info(f"Allowed CORS Origins: {origins}")
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)
