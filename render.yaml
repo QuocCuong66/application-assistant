@@ -7,7 +7,7 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.10.13
-      - key: FRONTEND_URL
+      - key: FRONTEND_ORIGIN
         value: "https://application-assistant.vercel.app" # Sửa lại theo link frontend của bạn
       - key: MONGO_DB_NAME
         value: "CuongProAI"
