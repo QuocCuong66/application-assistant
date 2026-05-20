@@ -2,8 +2,9 @@ import logging
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from fastapi.middleware.cors import CORSMiddleware  # Thêm dòng này
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
+import config
 from api.routes import router
 from api.auth import router as auth_router
 from api.payment import router as payment_router
@@ -26,9 +27,12 @@ app = FastAPI(
 
 # --- CẤU HÌNH CORS TẠI ĐÂY ---
 origins = [
-    "https://application-assistant.vercel.app", # Domain frontend của bạn
+    config.FRONTEND_ORIGIN,
     "http://localhost",
+    "http://localhost:3000",
+    "http://localhost:5173",
     "http://localhost:8000",
+    "http://127.0.0.1:8000",
 ]
 
 app.add_middleware(

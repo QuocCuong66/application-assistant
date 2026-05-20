@@ -201,9 +201,13 @@ async def run_agent():
     print("   Hotkey khôi phục: Ctrl + Alt + R để reset trạng thái")
     print("========================================")
     
-    server_url = input(f"Nhập Server URL (Để trống để dùng {DEFAULT_SERVER}): ").strip()
+    server_url = os.getenv("BACKEND_WS_URL")
     if not server_url:
-        server_url = DEFAULT_SERVER
+        print("⚠️ BACKEND_WS_URL không được cấu hình trong .env.")
+        print("👉 Fallback về mặc định local: ws://localhost:8000/automation/ws")
+        server_url = "ws://localhost:8000/automation/ws"
+    else:
+        print(f"🔗 Sử dụng BACKEND_WS_URL từ .env: {server_url}")
         
     user_id = input("Nhập USER ID của bạn (Lấy từ giao diện web): ").strip()
     while not user_id:
