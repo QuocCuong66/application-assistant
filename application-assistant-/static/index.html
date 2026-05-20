@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Assistant - Premium Vibrant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <!-- Floating Elements Decor -->
+    <div class="floating-elements">
+        <div class="float-item float1"></div>
+        <div class="float-item float2"></div>
+        <div class="float-item float3"></div>
+        <div class="float-item float4"></div>
+    </div>
+
+    <!-- Floating Toolbar -->
+    <div id="floatingToolbar" class="hidden fixed top-6 left-1/2 -translate-x-1/2 glass-panel px-6 py-3 z-50 flex items-center gap-4 shadow-2xl">
+        <span class="text-sm font-bold text-rose-500 uppercase tracking-wider">Skill Lab Recording</span>
+        <button id="ftStartBtn" onclick="ftStartTraining()" class="px-5 py-2 bg-rose-500 text-white rounded-full text-xs font-bold active:scale-95 transition-all">▶ Start</button>
+        <button id="ftFinishBtn" onclick="ftFinishTraining()" class="hidden px-5 py-2 bg-slate-800 text-white rounded-full text-xs font-bold active:scale-95 transition-all">⏹ Finish</button>
+        <button onclick="ftClose()" class="text-slate-400 hover:text-slate-600">✕</button>
+    </div>
+
+    <div class="container">
+        <div id="alertBox" class="fixed top-6 right-6 px-6 py-3 rounded-2xl glass-panel text-rose-600 font-bold text-sm empty:hidden shadow-xl z-[100]"></div>
+
+        <header>
+            <h1>AI Assistant</h1>
+            <p class="subtitle">Experience the future of automation</p>
+        </header>
+
+        <!-- Auth Section -->
+        <div id="authSection" class="glass-panel max-w-md mx-auto p-10 space-y-8 text-center">
+            <div class="space-y-4">
+                <input type="text" id="username" placeholder="Username" class="w-full">
+                <input type="password" id="password" placeholder="Password" class="w-full">
+            </div>
+            <div class="flex flex-col gap-4">
+                <button onclick="login()" class="cta-button w-full">Sign In</button>
+                <button onclick="register()" class="text-slate-400 font-bold text-sm hover:text-rose-400 transition-colors">Create new account</button>
+            </div>
+        </div>
+
+        <!-- App Section -->
+        <div id="appSection" class="hidden space-y-8 max-w-4xl mx-auto">
+            <div class="features">
+                <!-- Chat Feature -->
+                <div class="feature-card">
+                    <div class="feature-icon text-4xl mb-4">💬</div>
+                    <h3>Neural Chat</h3>
+                    <p class="mb-6">Communicate with advanced AI logic in real-time.</p>
+                    <div id="chatBox" class="text-left mb-4"></div>
+                    <div class="space-y-3">
+                        <div class="flex gap-2">
+                            <input type="text" id="messageInput" placeholder="Command..." class="flex-grow">
+                            <button onclick="sendMessage()" class="p-3 bg-rose-500 text-white rounded-full hover:scale-110 transition-transform shadow-lg">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                            </button>
+                        </div>
+                        <div class="flex gap-3">
+                            <button id="recordBtn" onclick="toggleRecording()" class="flex-1 py-3 border-2 border-rose-200 text-rose-500 rounded-full font-bold text-xs hover:bg-rose-50 transition-colors">🎤 Voice Command</button>
+                            <button id="stopSpeakBtn" onclick="stopSpeaking()" class="hidden flex-1 py-3 bg-slate-800 text-white rounded-full font-bold text-xs">⏹ Stop AI</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Skill Feature -->
+                <div id="trainingSection" class="feature-card">
+                    <div class="feature-icon text-4xl mb-4">⚙️</div>
+                    <h3>Skill Training</h3>
+                    <p class="mb-6">Teach the AI to perform complex desktop tasks.</p>
+                    <button id="startTrainBtn" onclick="startTraining()" class="cta-button w-full mb-6">Initialize Training</button>
+                    
+                    <div id="saveTaskDiv" class="hidden space-y-4 p-5 bg-white/50 rounded-2xl border-2 border-rose-50 mb-6">
+                        <input type="text" id="taskNameInput" placeholder="Skill Name" class="w-full">
+                        <button onclick="saveTask()" class="cta-button w-full text-sm">Save Neural Pattern</button>
+                    </div>
+
+                    <div class="text-left">
+                        <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Learned Skills</h4>
+                        <ul id="taskList" class="space-y-3"></ul>
+                    </div>
+                </div>
+            </div>
+
+            <div class="text-center">
+                <p class="text-sm font-bold text-slate-400 mb-4">
+                    ID: <span id="userIdDisplay" class="text-indigo-600 font-black">...</span> | 
+                    Status: <span id="userStatus" class="text-rose-400">Free Access</span>
+                </p>
+                <button class="btn-pro px-8 py-3 bg-amber-400 text-amber-900 font-black rounded-full shadow-xl mb-8" onclick="upgradePro()">🔥 UPGRADE TO PRO</button>
+                <br>
+                <button onclick="logout()" class="text-[10px] font-black text-slate-300 hover:text-rose-500 transition-colors uppercase tracking-[0.4em]">Terminate Session</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/script.js" defer></script>
+    <script defer src="/_vercel/insights/script.js"></script>
+</body>
+</html>

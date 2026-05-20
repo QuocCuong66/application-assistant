@@ -1,0 +1,145 @@
+[
+    {
+        "action": "click",
+        "parameters": {
+            "x": 953,
+            "y": 19,
+            "button": "Button.left"
+        },
+        "time": 1.12
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "y"
+        },
+        "time": 2.6
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "o"
+        },
+        "time": 2.74
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "u"
+        },
+        "time": 2.84
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "Key.enter"
+        },
+        "time": 3.63
+    },
+    {
+        "action": "click",
+        "parameters": {
+            "x": 809,
+            "y": 16,
+            "button": "Button.left"
+        },
+        "time": 9.08
+    },
+    {
+        "action": "click",
+        "parameters": {
+            "x": 1065,
+            "y": 227,
+            "button": "Button.left"
+        },
+        "time": 10.51
+    },
+    {
+        "action": "click",
+        "parameters": {
+            "x": 1217,
+            "y": 584,
+            "button": "Button.left"
+        },
+        "time": 13.51
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "s"
+        },
+        "time": 15.89
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "k"
+        },
+        "time": 16.04
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "i"
+        },
+        "time": 16.23
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "l"
+        },
+        "time": 16.46
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "l"
+        },
+        "time": 16.63
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "Key.space"
+        },
+        "time": 16.75
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "Key.backspace"
+        },
+        "time": 17.34
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "Key.shift_r"
+        },
+        "time": 17.65
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "_"
+        },
+        "time": 17.84
+    },
+    {
+        "action": "type",
+        "parameters": {
+            "text": "1"
+        },
+        "time": 18.42
+    },
+    {
+        "action": "click",
+        "parameters": {
+            "x": 1206,
+            "y": 633,
+            "button": "Button.left"
+        },
+        "time": 20.96
+    }
+]
