@@ -108,6 +108,17 @@ function appendChatMessage(chatBox, role, label, message) {
     chatBox.scrollTop = chatBox.scrollHeight;
 }
 
+function toggleAssistantWidget(widgetName, forceOpen) {
+    const widget = document.querySelector(`.assistant-widget[data-widget="${widgetName}"]`);
+    if (!widget) return;
+
+    const shouldOpen = typeof forceOpen === "boolean"
+        ? forceOpen
+        : !widget.classList.contains("open");
+
+    widget.classList.toggle("open", shouldOpen);
+}
+
 // --- App Logic ---
 window.onload = () => {
     const urlParams = new URLSearchParams(window.location.search);
