@@ -111,7 +111,7 @@ async def agent_chat_endpoint(
 
     # Start the async generator
     return StreamingResponse(
-        run_agent_loop(current_user["id"], user_message),
+        run_agent_loop(current_user["id"], user_message, db=db),
         media_type="application/x-ndjson"
     )
 
@@ -138,6 +138,16 @@ def get_history(
         ))
 
     return history_list
+
+
+@router.delete("/history")
+def clear_history(
+    db = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Deletes chat history for the current user."""
+    result = db.message_history.delete_many({"user_id": current_user["id"]})
+    return {"message": "Chat history cleared.", "deleted_count": result.deleted_count}
 
 
 @router.get("/mongo/{collection_name}")
