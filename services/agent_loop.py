@@ -2,6 +2,7 @@ import json
 import logging
 import asyncio
 import re
+import datetime
 from openai import OpenAI
 from config import OPENAI_API_KEY, OPENAI_VISION_MODEL
 from api.automation import manager
@@ -11,18 +12,19 @@ client = OpenAI(api_key=OPENAI_API_KEY)
 
 SYSTEM_PROMPT = """
 You are an intelligent desktop automation AI. You can observe the user's screen and execute actions to achieve their goal.
-You are given the user's goal, a history of previous actions, and an image of the current screen.
-You must analyze the screen, decide the next step, and output a strict JSON object.
+You are given the user's goal, previous actions, and a fresh screenshot on every step.
+Analyze the current screen and choose exactly one next action. Output only the JSON object required by the response schema.
 
-Allowed tools:
-- click(x: int, y: int): Click at the specified coordinates.
-- double_click(x: int, y: int): Double click at the specified coordinates.
-- type_text(text: str): Type a string of text.
-- press(key: str): Press a specific key (e.g. "enter", "tab", "esc").
-- hotkey(keys: list[str]): Press a combination of keys (e.g. ["ctrl", "c"], ["win", "r"]).
-- scroll(amount: int): Scroll the mouse wheel (positive for up, negative for down).
-- open_app(app_name: str): Open an application by name (e.g. "chrome", "notepad").
-- wait(seconds: int): Wait for a number of seconds.
+Allowed actions:
+- click: use coordinates [x, y] for the center of the target.
+- double_click: use coordinates [x, y] for the center of the target.
+- type_text: use text.
+- press: use key, e.g. "enter", "tab", "esc".
+- hotkey: use keys, e.g. ["ctrl", "c"], ["win", "r"].
+- scroll: use amount, positive for up and negative for down.
+- open_app: use app_name, e.g. "chrome", "notepad".
+- wait: use seconds.
+- none: use only when completed, failed, or waiting for user confirmation.
 
 Safety Protocol:
 If the user's goal or the current step involves ANY of the following dangerous actions, you MUST set status to "need_user_confirmation":
@@ -36,24 +38,134 @@ If the user's goal or the current step involves ANY of the following dangerous a
 - Installing software
 - Changing system settings
 
-Response JSON Schema (STRICT):
-{
-  "thought_summary": "Short reason for this step",
-  "status": "continue | completed | need_user_confirmation | failed",
-  "next_action": {
-    "tool": "tool_name",
-    "args": {"arg1": "value1"}
-  },
-  "message_to_user": "Message to show the user (if completed, failed, or need confirmation)"
-}
-
-Do NOT wrap the JSON in Markdown block quotes (like ```json), just output the raw JSON.
+Coordinate rules:
+- Use the screenshot coordinate system.
+- If unsure, prefer wait or ask for confirmation instead of clicking randomly.
+- For completed or failed status, set action to "none".
 """
 
-async def run_agent_loop(user_id: str, goal: str):
+DECISION_RESPONSE_FORMAT = {
+    "type": "json_schema",
+    "json_schema": {
+        "name": "desktop_agent_decision",
+        "strict": True,
+        "schema": {
+            "type": "object",
+            "additionalProperties": False,
+            "properties": {
+                "thought_summary": {"type": "string"},
+                "status": {
+                    "type": "string",
+                    "enum": ["continue", "completed", "need_user_confirmation", "failed"]
+                },
+                "action": {
+                    "type": "string",
+                    "enum": ["click", "double_click", "type_text", "press", "hotkey", "scroll", "open_app", "wait", "none"]
+                },
+                "target": {"type": ["string", "null"]},
+                "coordinates": {
+                    "anyOf": [
+                        {
+                            "type": "array",
+                            "items": {"type": "number"}
+                        },
+                        {"type": "null"}
+                    ]
+                },
+                "text": {"type": ["string", "null"]},
+                "key": {"type": ["string", "null"]},
+                "keys": {
+                    "anyOf": [
+                        {"type": "array", "items": {"type": "string"}},
+                        {"type": "null"}
+                    ]
+                },
+                "amount": {"type": ["integer", "null"]},
+                "app_name": {"type": ["string", "null"]},
+                "seconds": {"type": ["number", "null"]},
+                "message_to_user": {"type": "string"}
+            },
+            "required": [
+                "thought_summary",
+                "status",
+                "action",
+                "target",
+                "coordinates",
+                "text",
+                "key",
+                "keys",
+                "amount",
+                "app_name",
+                "seconds",
+                "message_to_user"
+            ]
+        }
+    }
+}
+
+
+def build_tool_call(decision: dict) -> dict:
+    action = decision.get("action", "none")
+    coordinates = decision.get("coordinates")
+
+    if action in {"click", "double_click"}:
+        if not isinstance(coordinates, list) or len(coordinates) != 2:
+            raise ValueError(f"{action} requires coordinates [x, y].")
+        return {
+            "tool": action,
+            "args": {"x": int(coordinates[0]), "y": int(coordinates[1])}
+        }
+
+    if action == "type_text":
+        return {"tool": action, "args": {"text": decision.get("text") or ""}}
+
+    if action == "press":
+        key = decision.get("key")
+        if not key:
+            raise ValueError("press requires key.")
+        return {"tool": action, "args": {"key": key}}
+
+    if action == "hotkey":
+        keys = decision.get("keys")
+        if not isinstance(keys, list) or not keys:
+            raise ValueError("hotkey requires a non-empty keys array.")
+        return {"tool": action, "args": {"keys": keys}}
+
+    if action == "scroll":
+        amount = decision.get("amount")
+        if amount is None:
+            raise ValueError("scroll requires amount.")
+        return {"tool": action, "args": {"amount": int(amount)}}
+
+    if action == "open_app":
+        app_name = decision.get("app_name")
+        if not app_name:
+            raise ValueError("open_app requires app_name.")
+        return {"tool": action, "args": {"app_name": app_name}}
+
+    if action == "wait":
+        return {"tool": action, "args": {"seconds": float(decision.get("seconds") or 1)}}
+
+    return {"tool": None, "args": {}}
+
+
+def save_agent_history(db, user_id: str, goal: str, response: str):
+    if db is None or not response:
+        return
+
+    db.message_history.insert_one({
+        "user_id": user_id,
+        "message": goal,
+        "response": response,
+        "timestamp": datetime.datetime.utcnow()
+    })
+
+
+async def run_agent_loop(user_id: str, goal: str, db=None):
     max_steps = 10
     step = 0
     history = []
+    final_message = ""
     
     yield json.dumps({
         "type": "log",
@@ -69,7 +181,7 @@ async def run_agent_loop(user_id: str, goal: str):
             "state": "waiting_confirmation",
             "message": goal_safety["reason"]
         }) + "\n"
-        
+
         manager.user_events[user_id] = asyncio.Event()
         try:
             await asyncio.wait_for(manager.user_events[user_id].wait(), timeout=60.0)
@@ -82,12 +194,15 @@ async def run_agent_loop(user_id: str, goal: str):
             del manager.user_events[user_id]
             
         if result == 'cancel':
-            yield json.dumps({"type": "final", "state": "completed", "message": "User cancelled the risky request."}) + "\n"
+            final_message = "User cancelled the risky request."
+            yield json.dumps({"type": "final", "state": "completed", "message": final_message}) + "\n"
+            save_agent_history(db, user_id, goal, final_message)
             return
     
     while step < max_steps:
         if manager.stop_flags.get(user_id):
-            yield json.dumps({"type": "final", "state": "error", "message": "Agent loop stopped by user."}) + "\n"
+            final_message = "Agent loop stopped by user."
+            yield json.dumps({"type": "final", "state": "error", "message": final_message}) + "\n"
             break
             
         step += 1
@@ -140,8 +255,9 @@ async def run_agent_loop(user_id: str, goal: str):
                 client.chat.completions.create,
                 model=OPENAI_VISION_MODEL,
                 messages=messages,
-                max_tokens=500,
-                temperature=0.0
+                max_tokens=700,
+                temperature=0.0,
+                response_format=DECISION_RESPONSE_FORMAT
             )
             ai_text = response.choices[0].message.content.strip()
             # Clean possible markdown wrap more robustly
@@ -166,7 +282,15 @@ async def run_agent_loop(user_id: str, goal: str):
 
         thought = decision.get("thought_summary", "")
         status = decision.get("status", "failed")
-        next_action = decision.get("next_action", {})
+        try:
+            next_action = build_tool_call(decision)
+        except ValueError as e:
+            yield json.dumps({
+                "type": "error",
+                "state": "error",
+                "message": f"Invalid model action JSON: {e}"
+            }) + "\n"
+            break
         msg_to_user = decision.get("message_to_user", "")
         
         yield json.dumps({
@@ -176,10 +300,11 @@ async def run_agent_loop(user_id: str, goal: str):
         }) + "\n"
         
         if status in ["completed", "failed"]:
+            final_message = msg_to_user or f"Status: {status}"
             yield json.dumps({
                 "type": "final",
                 "state": status,
-                "message": msg_to_user or f"Status: {status}"
+                "message": final_message
             }) + "\n"
             break
 
@@ -211,7 +336,8 @@ async def run_agent_loop(user_id: str, goal: str):
                 del manager.user_events[user_id]
                 
             if confirm_res == 'cancel':
-                yield json.dumps({"type": "final", "state": "completed", "message": "User cancelled the action."}) + "\n"
+                final_message = "User cancelled the action."
+                yield json.dumps({"type": "final", "state": "completed", "message": final_message}) + "\n"
                 break
         
         yield json.dumps({
@@ -249,9 +375,11 @@ async def run_agent_loop(user_id: str, goal: str):
         # Small delay to let UI breathe
         await asyncio.sleep(1)
         
-    if step >= max_steps:
+    if step >= max_steps and not final_message:
+        final_message = "Da dat gioi han toi da so buoc (10 steps). Dung Agent."
         yield json.dumps({
             "type": "final",
             "state": "error",
             "message": "Đã đạt giới hạn tối đa số bước (10 steps). Dừng Agent."
         }) + "\n"
+    save_agent_history(db, user_id, goal, final_message)

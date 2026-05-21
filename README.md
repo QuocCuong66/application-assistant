@@ -92,3 +92,5 @@ Lưu ý: `desktop_agent.py` **không** deploy lên Render hay Vercel. File này 
 4. Tool sẽ tự đọc link Server. Bạn chỉ cần nhập **USER ID** (Lấy từ giao diện web, góc dưới màn hình "ID: 69ff...").
 
 Khi màn hình hiện `✅ Đã kết nối thành công!`, bạn có thể lên giao diện Web (Vercel) và ra lệnh cho AI điều khiển máy tính.
+
+BACKEND_URL=https://application-assistant-backend.onrender.com

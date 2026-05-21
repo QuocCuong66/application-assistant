@@ -13,10 +13,11 @@ let token = localStorage.getItem("token");
 
 // --- Canvas Particle System ---
 const canvas = document.getElementById('bgCanvas');
-const ctx = canvas.getContext('2d');
+const ctx = canvas ? canvas.getContext('2d') : null;
 let particles = [];
 
 function initCanvas() {
+    if (!canvas) return;
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
 }
@@ -47,6 +48,7 @@ class Particle {
 }
 
 function createParticles() {
+    if (!canvas) return;
     particles = [];
     const count = (canvas.width * canvas.height) / 15000;
     for (let i = 0; i < count; i++) {
@@ -55,6 +57,7 @@ function createParticles() {
 }
 
 function animateParticles() {
+    if (!ctx) return;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     particles.forEach(p => {
         p.update();
@@ -67,6 +70,43 @@ window.addEventListener('resize', () => {
     initCanvas();
     createParticles();
 });
+
+function escapeHtml(value) {
+    const div = document.createElement("div");
+    div.textContent = value ?? "";
+    return div.innerHTML;
+}
+
+function renderMarkdown(value) {
+    const source = String(value ?? "");
+    if (!window.marked || !window.DOMPurify) {
+        return escapeHtml(source).replace(/\n/g, "<br>");
+    }
+
+    const html = window.marked.parse(source, {
+        breaks: true,
+        gfm: true
+    });
+
+    return window.DOMPurify.sanitize(html);
+}
+
+function appendChatMessage(chatBox, role, label, message) {
+    const messageEl = document.createElement("div");
+    messageEl.className = `${role}-message chat-message`;
+
+    const labelEl = document.createElement("strong");
+    labelEl.className = "message-label";
+    labelEl.textContent = `${label}:`;
+
+    const contentEl = document.createElement("div");
+    contentEl.className = "message-content markdown-body";
+    contentEl.innerHTML = renderMarkdown(message);
+
+    messageEl.append(labelEl, contentEl);
+    chatBox.appendChild(messageEl);
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
 
 // --- App Logic ---
 window.onload = () => {
@@ -286,7 +326,7 @@ async function sendMessage() {
     const msg = document.getElementById("messageInput").value;
     if (!msg) return;
     const chatBox = document.getElementById("chatBox");
-    chatBox.innerHTML += `<div class="user-message"><b>You:</b> ${msg}</div>`;
+    appendChatMessage(chatBox, "user", "You", msg);
     document.getElementById("messageInput").value = "";
     
     setAvatarState('thinking');
@@ -350,8 +390,7 @@ async function sendMessage() {
                         logsUl.scrollTop = logsUl.scrollHeight;
                         
                         if (data.type === 'final') {
-                            chatBox.innerHTML += `<div class="ai-message"><b>AI:</b> ${data.message}</div>`;
-                            chatBox.scrollTop = chatBox.scrollHeight;
+                            appendChatMessage(chatBox, "ai", "AI", data.message);
                             
                             const utterance = new SpeechSynthesisUtterance(data.message);
                             utterance.onstart = () => document.getElementById("stopSpeakBtn").style.display = "block";
@@ -409,6 +448,32 @@ async function confirmAction(action) {
     }
 }
 
+async function clearChat() {
+    if (!confirm("Clear the current chat history?")) return;
+
+    try {
+        const res = await fetch(`${API_URL}/history`, {
+            method: "DELETE",
+            headers: { "X-Token": token }
+        });
+
+        if (res.status === 200) {
+            document.getElementById("chatBox").innerHTML = "";
+            document.getElementById("agentLogs").innerHTML = "";
+            document.getElementById("agentLogsContainer").classList.add("hidden");
+            document.getElementById("confirmationBox").classList.add("hidden");
+            showAlert("Chat cleared.");
+            return;
+        }
+
+        const data = await res.json();
+        showAlert(data.detail || data.message || "Unable to clear chat.");
+    } catch (e) {
+        console.error(e);
+        showAlert("Connection error.");
+    }
+}
+
 async function loadHistory() {
     const res = await fetch(`${API_URL}/history`, { headers: { "X-Token": token } });
     if (res.status === 200) {
@@ -416,8 +481,8 @@ async function loadHistory() {
         const chatBox = document.getElementById("chatBox");
         chatBox.innerHTML = "";
         data.reverse().forEach(item => {
-            chatBox.innerHTML += `<div class="user-message"><b>You:</b> ${item.message}</div>`;
-            chatBox.innerHTML += `<div class="ai-message"><b>AI:</b> ${item.response}</div>`;
+            appendChatMessage(chatBox, "user", "You", item.message);
+            appendChatMessage(chatBox, "ai", "AI", item.response);
         });
         chatBox.scrollTop = chatBox.scrollHeight;
     }
