@@ -77,35 +77,322 @@ function escapeHtml(value) {
     return div.innerHTML;
 }
 
+let lastUserPrompt = "";
+let chatRequestInFlight = false;
+
+const FEEDBACK_STORAGE_KEY = "chat_message_feedback";
+
+function configureMarkdown() {
+    if (!window.marked) return;
+    window.marked.setOptions({
+        breaks: true,
+        gfm: true,
+        headerIds: false,
+        mangle: false
+    });
+}
+
+if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", configureMarkdown);
+} else {
+    configureMarkdown();
+}
+
 function renderMarkdown(value) {
-    const source = String(value ?? "");
+    const source = String(value ?? "").trim();
+    if (!source) return "";
+
     if (!window.marked || !window.DOMPurify) {
         return escapeHtml(source).replace(/\n/g, "<br>");
     }
 
-    const html = window.marked.parse(source, {
-        breaks: true,
-        gfm: true
+    const html = window.marked.parse(source);
+    return window.DOMPurify.sanitize(html, {
+        USE_PROFILES: { html: true }
     });
-
-    return window.DOMPurify.sanitize(html);
 }
 
-function appendChatMessage(chatBox, role, label, message) {
+function getChatFeedbackMap() {
+    try {
+        return JSON.parse(localStorage.getItem(FEEDBACK_STORAGE_KEY) || "{}");
+    } catch {
+        return {};
+    }
+}
+
+function saveMessageFeedback(messageId, value) {
+    const map = getChatFeedbackMap();
+    map[messageId] = value;
+    localStorage.setItem(FEEDBACK_STORAGE_KEY, JSON.stringify(map));
+}
+
+function scrollChatToBottom() {
+    const chatBox = document.getElementById("chatBox");
+    if (!chatBox) return;
+    chatBox.scrollTop = chatBox.scrollHeight;
+}
+
+const SKILL_STATUS_LABELS = {
+    ready: "Ready",
+    active: "Active",
+    training: "Training",
+    locked: "Locked",
+    disabled: "Disabled"
+};
+
+function setSkillStatus(skillId, status) {
+    if (!skillId || !status) return;
+    const normalized = status === "running" ? "training" : status;
+    const card = document.querySelector(`.skill-card[data-skill="${skillId}"]`);
+    if (!card) return;
+    card.dataset.status = normalized;
+    const label = card.querySelector(".skill-status");
+    if (label) {
+        label.textContent = SKILL_STATUS_LABELS[normalized] || normalized;
+    }
+}
+
+function resetAllSkillStatuses() {
+    document.querySelectorAll(".skill-card[data-skill]").forEach((card) => {
+        setSkillStatus(card.dataset.skill, "ready");
+    });
+}
+
+function handleStreamIntentEvent(data) {
+    if (data.skill_id && data.skill_status) {
+        setSkillStatus(data.skill_id, data.skill_status);
+    }
+}
+
+let streamingAiRow = null;
+
+function ensureStreamingAiBubble(chatBox, userPrompt) {
+    if (streamingAiRow) return streamingAiRow;
+    const row = document.createElement("div");
+    row.className = "chat-row ai-row streaming-row";
+    row.dataset.userPrompt = userPrompt || lastUserPrompt;
+
+    const avatar = document.createElement("span");
+    avatar.className = "chat-avatar";
+    avatar.textContent = "AI";
+
+    const wrap = document.createElement("div");
+    wrap.className = "chat-bubble-wrap";
+
+    const messageEl = document.createElement("div");
+    messageEl.className = "ai-message chat-message";
+
+    const labelEl = document.createElement("strong");
+    labelEl.className = "message-label";
+    labelEl.textContent = "AI";
+
+    const contentEl = document.createElement("div");
+    contentEl.className = "message-content markdown-body";
+    contentEl.dataset.rawText = "";
+
+    messageEl.append(labelEl, contentEl);
+    wrap.appendChild(messageEl);
+    row.append(avatar, wrap);
+    chatBox.appendChild(row);
+    streamingAiRow = row;
+    scrollChatToBottom();
+    return row;
+}
+
+function updateStreamingAiBubble(chatBox, text, userPrompt) {
+    const row = ensureStreamingAiBubble(chatBox, userPrompt);
+    const contentEl = row.querySelector(".message-content");
+    if (!contentEl) return;
+    contentEl.dataset.rawText = text;
+    contentEl.innerHTML = renderMarkdown(text);
+    scrollChatToBottom();
+}
+
+function finalizeStreamingAiBubble(chatBox, text, userPrompt) {
+    if (!streamingAiRow) {
+        appendChatMessage(chatBox, "ai", "AI", text, { userPrompt: userPrompt || lastUserPrompt });
+        return;
+    }
+    const row = streamingAiRow;
+    const messageId = `ai-${Date.now()}`;
+    row.classList.remove("streaming-row");
+    row.dataset.messageId = messageId;
+    row.dataset.userPrompt = userPrompt || lastUserPrompt;
+
+    const contentEl = row.querySelector(".message-content");
+    if (contentEl) {
+        contentEl.dataset.rawText = text;
+        contentEl.innerHTML = renderMarkdown(text);
+    }
+
+    const wrap = row.querySelector(".chat-bubble-wrap");
+    if (wrap && !wrap.querySelector(".message-actions")) {
+        const actions = document.createElement("div");
+        actions.className = "message-actions";
+        actions.append(
+            createMessageActionButton("Copy", "Copy response", () => copyMessageText(text)),
+            createMessageActionButton("↻", "Regenerate response", () =>
+                regenerateFromPrompt(userPrompt || lastUserPrompt, row)
+            ),
+            (() => {
+                const likeBtn = createMessageActionButton("♥", "Like response", () => {
+                    saveMessageFeedback(messageId, "like");
+                    setFeedbackButtonState(actions, messageId);
+                });
+                likeBtn.dataset.action = "like";
+                return likeBtn;
+            })(),
+            (() => {
+                const dislikeBtn = createMessageActionButton("♡", "Dislike response", () => {
+                    saveMessageFeedback(messageId, "dislike");
+                    setFeedbackButtonState(actions, messageId);
+                });
+                dislikeBtn.dataset.action = "dislike";
+                return dislikeBtn;
+            })()
+        );
+        setFeedbackButtonState(actions, messageId);
+        wrap.appendChild(actions);
+    }
+    streamingAiRow = null;
+    scrollChatToBottom();
+}
+
+function setChatTyping(visible) {
+    const typing = document.getElementById("chatTyping");
+    if (!typing) return;
+    typing.classList.toggle("hidden", !visible);
+    if (visible) scrollChatToBottom();
+}
+
+function createMessageActionButton(label, title, onClick) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "msg-action-btn";
+    btn.textContent = label;
+    btn.title = title;
+    btn.setAttribute("aria-label", title);
+    btn.addEventListener("click", onClick);
+    return btn;
+}
+
+function copyMessageText(text) {
+    const value = String(text ?? "");
+    if (!value) return;
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(value).then(() => showAlert("Copied to clipboard.")).catch(() => fallbackCopy(value));
+    } else {
+        fallbackCopy(value);
+    }
+}
+
+function fallbackCopy(text) {
+    const area = document.createElement("textarea");
+    area.value = text;
+    area.setAttribute("readonly", "");
+    area.style.position = "fixed";
+    area.style.left = "-9999px";
+    document.body.appendChild(area);
+    area.select();
+    try {
+        document.execCommand("copy");
+        showAlert("Copied to clipboard.");
+    } catch {
+        showAlert("Unable to copy.");
+    }
+    document.body.removeChild(area);
+}
+
+function setFeedbackButtonState(actionsEl, messageId) {
+    const feedback = getChatFeedbackMap()[messageId];
+    actionsEl.querySelectorAll(".msg-action-btn").forEach((btn) => {
+        btn.classList.remove("active-like", "active-dislike");
+    });
+    if (feedback === "like") {
+        actionsEl.querySelector('[data-action="like"]')?.classList.add("active-like");
+    }
+    if (feedback === "dislike") {
+        actionsEl.querySelector('[data-action="dislike"]')?.classList.add("active-dislike");
+    }
+}
+
+function appendChatMessage(chatBox, role, label, message, options = {}) {
+    const isUser = role === "user";
+    const row = document.createElement("div");
+    row.className = `chat-row ${isUser ? "user-row" : "ai-row"}`;
+
+    const avatar = document.createElement("span");
+    avatar.className = "chat-avatar";
+    avatar.textContent = isUser ? "You" : "AI";
+    avatar.setAttribute("aria-hidden", "true");
+
+    const wrap = document.createElement("div");
+    wrap.className = "chat-bubble-wrap";
+
     const messageEl = document.createElement("div");
     messageEl.className = `${role}-message chat-message`;
 
     const labelEl = document.createElement("strong");
     labelEl.className = "message-label";
-    labelEl.textContent = `${label}:`;
+    labelEl.textContent = label;
 
     const contentEl = document.createElement("div");
     contentEl.className = "message-content markdown-body";
     contentEl.innerHTML = renderMarkdown(message);
 
     messageEl.append(labelEl, contentEl);
-    chatBox.appendChild(messageEl);
-    chatBox.scrollTop = chatBox.scrollHeight;
+    wrap.appendChild(messageEl);
+
+    if (!isUser) {
+        const messageId = options.messageId || `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        const userPrompt = options.userPrompt || "";
+        row.dataset.messageId = messageId;
+        if (userPrompt) row.dataset.userPrompt = userPrompt;
+
+        const actions = document.createElement("div");
+        actions.className = "message-actions";
+
+        actions.append(
+            createMessageActionButton("Copy", "Copy response", () => copyMessageText(message)),
+            createMessageActionButton("↻", "Regenerate response", () => regenerateFromPrompt(userPrompt || lastUserPrompt, row)),
+            (() => {
+                const likeBtn = createMessageActionButton("♥", "Like response", () => {
+                    saveMessageFeedback(messageId, "like");
+                    setFeedbackButtonState(actions, messageId);
+                });
+                likeBtn.dataset.action = "like";
+                return likeBtn;
+            })(),
+            (() => {
+                const dislikeBtn = createMessageActionButton("♡", "Dislike response", () => {
+                    saveMessageFeedback(messageId, "dislike");
+                    setFeedbackButtonState(actions, messageId);
+                });
+                dislikeBtn.dataset.action = "dislike";
+                return dislikeBtn;
+            })()
+        );
+
+        setFeedbackButtonState(actions, messageId);
+        wrap.appendChild(actions);
+    }
+
+    row.append(avatar, wrap);
+    chatBox.appendChild(row);
+    scrollChatToBottom();
+}
+
+async function regenerateFromPrompt(prompt, aiRow) {
+    const text = String(prompt || "").trim();
+    if (!text || chatRequestInFlight) {
+        if (!text) showAlert("No previous prompt to regenerate.");
+        return;
+    }
+    if (aiRow && aiRow.parentElement) {
+        aiRow.remove();
+    }
+    document.getElementById("messageInput").value = text;
+    await sendMessage(text, { skipUserBubble: true });
 }
 
 function toggleAssistantWidget(widgetName, forceOpen) {
@@ -148,12 +435,12 @@ function updateStatusUI(isPro) {
     const statusEl = document.getElementById("userStatus");
     const upgradeBtn = document.querySelector(".btn-pro");
     if (isPro) {
-        statusEl.innerText = "PRO ACCOUNT ✨";
-        statusEl.className = "text-[10px] font-black text-indigo-600 uppercase tracking-widest";
+        statusEl.innerText = "Pro Account";
+        statusEl.className = "status-pro";
         if (upgradeBtn) upgradeBtn.style.display = "none";
     } else {
-        statusEl.innerText = "FREE ACCOUNT";
-        statusEl.className = "text-[10px] font-black text-slate-400 uppercase tracking-widest";
+        statusEl.innerText = "Free Access";
+        statusEl.className = "status-free";
         if (upgradeBtn) upgradeBtn.style.display = "block";
     }
 }
@@ -333,103 +620,129 @@ async function deleteTask(taskId) {
     if (res.status === 200) loadTrainedTasks();
 }
 
-async function sendMessage() {
-    const msg = document.getElementById("messageInput").value;
-    if (!msg) return;
+async function sendMessage(presetMessage, options = {}) {
+    const input = document.getElementById("messageInput");
+    const msg = String(presetMessage ?? input?.value ?? "").trim();
+    if (!msg || chatRequestInFlight) return;
+
     const chatBox = document.getElementById("chatBox");
-    appendChatMessage(chatBox, "user", "You", msg);
-    document.getElementById("messageInput").value = "";
-    
-    setAvatarState('thinking');
+    lastUserPrompt = msg;
+
+    if (!options.skipUserBubble) {
+        appendChatMessage(chatBox, "user", "You", msg);
+    }
+    if (input) input.value = "";
+
+    chatRequestInFlight = true;
+    streamingAiRow = null;
+    setChatTyping(true);
+    setAvatarState("thinking");
     document.getElementById("agentLogsContainer").classList.remove("hidden");
     const logsUl = document.getElementById("agentLogs");
-    logsUl.innerHTML = ""; // clear previous logs
-    
+    logsUl.innerHTML = "";
+
     try {
         const res = await fetch(`${API_URL}/agent/chat`, {
-            method: "POST", headers: { "Content-Type": "application/json", "X-Token": token },
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Token": token },
             body: JSON.stringify({ message: msg })
         });
-        
+
         if (res.status === 400 || res.status === 500) {
-            const data = await res.json();
-            setAvatarState('error');
-            setTimeout(() => setAvatarState('idle'), 3000);
-            showAlert(data.detail || "Error starting agent loop.");
+            const data = await res.json().catch(() => ({}));
+            setAvatarState("error");
+            setTimeout(() => setAvatarState("idle"), 3000);
+            showAlert(data.detail || "Chat request failed.");
             return;
         }
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder("utf-8");
         let buffer = "";
-        
+
         while (true) {
             const { done, value } = await reader.read();
             if (done) {
-                if (document.getElementById("avatarLabel").innerText !== 'WAITING_CONFIRMATION') {
-                    setAvatarState('idle');
+                if (document.getElementById("avatarLabel").innerText !== "WAITING_CONFIRMATION") {
+                    setAvatarState("idle");
                 }
                 break;
             }
             const chunk = decoder.decode(value, { stream: true });
             buffer += chunk;
-            const lines = buffer.split('\n');
-            buffer = lines.pop(); // keep the last incomplete line in buffer
-            
-            for (let line of lines) {
+            const lines = buffer.split("\n");
+            buffer = lines.pop();
+
+            for (const line of lines) {
                 if (!line.trim()) continue;
                 try {
                     const data = JSON.parse(line);
-                    
-                    // Update state
+
+                    if (data.type === "intent") {
+                        handleStreamIntentEvent(data);
+                    }
+
                     if (data.state) {
                         setAvatarState(data.state);
                     }
-                    
-                    // Update logs
+
+                    if (data.type === "partial" && data.message) {
+                        setChatTyping(false);
+                        updateStreamingAiBubble(chatBox, data.message, msg);
+                    }
+
                     if (data.message) {
                         const li = document.createElement("li");
                         li.innerText = `> ${data.message}`;
-                        if (data.type === "error") li.className = "text-rose-500";
-                        if (data.type === "final") li.className = "text-amber-300 font-bold";
-                        logsUl.appendChild(li);
-                        
-                        // Limit to 50 logs
-                        while (logsUl.children.length > 50) {
-                            logsUl.removeChild(logsUl.firstChild);
+                        if (data.type === "error") li.style.color = "var(--danger)";
+                        if (data.type === "final") li.style.color = "var(--warning)";
+                        if (data.type !== "partial") {
+                            logsUl.appendChild(li);
+                            while (logsUl.children.length > 50) {
+                                logsUl.removeChild(logsUl.firstChild);
+                            }
+                            logsUl.scrollTop = logsUl.scrollHeight;
                         }
-                        logsUl.scrollTop = logsUl.scrollHeight;
-                        
-                        if (data.type === 'final') {
-                            appendChatMessage(chatBox, "ai", "AI", data.message);
-                            
+
+                        if (data.type === "final") {
+                            setChatTyping(false);
+                            finalizeStreamingAiBubble(chatBox, data.message, msg);
+
                             const utterance = new SpeechSynthesisUtterance(data.message);
-                            utterance.onstart = () => document.getElementById("stopSpeakBtn").style.display = "block";
-                            utterance.onend = () => document.getElementById("stopSpeakBtn").style.display = "none";
+                            utterance.onstart = () => {
+                                document.getElementById("stopSpeakBtn").style.display = "block";
+                            };
+                            utterance.onend = () => {
+                                document.getElementById("stopSpeakBtn").style.display = "none";
+                            };
                             window.speechSynthesis.speak(utterance);
-                            
-                            // Hide confirmation box if it was showing
-                            document.getElementById("confirmationBox").classList.add("hidden");
+
+                            if (data.state !== "waiting_confirmation") {
+                                document.getElementById("confirmationBox").classList.add("hidden");
+                            }
                         }
                     }
-                    
-                    if (data.state === 'waiting_confirmation') {
+
+                    if (data.state === "waiting_confirmation") {
                         const confBox = document.getElementById("confirmationBox");
                         confBox.classList.remove("hidden");
-                        document.getElementById("confirmationText").innerText = data.message || "AI needs confirmation to proceed.";
-                    } else {
+                        document.getElementById("confirmationText").innerText =
+                            data.message || "AI needs confirmation to proceed.";
+                    } else if (data.type === "final" && data.state !== "waiting_confirmation") {
                         document.getElementById("confirmationBox").classList.add("hidden");
                     }
-                } catch(e) {
+                } catch (e) {
                     console.error("Error parsing JSON chunk", line, e);
                 }
             }
         }
-        
     } catch (e) {
-        setAvatarState('error');
-        setTimeout(() => setAvatarState('idle'), 3000);
+        setAvatarState("error");
+        setTimeout(() => setAvatarState("idle"), 3000);
         showAlert("Connection error.");
+    } finally {
+        chatRequestInFlight = false;
+        setChatTyping(false);
     }
 }
 
@@ -448,14 +761,42 @@ async function stopAgent() {
 }
 
 async function confirmAction(action) {
-    document.getElementById("confirmationBox").classList.add("hidden");
+    const confBox = document.getElementById("confirmationBox");
     try {
-        await fetch(`${API_URL}/agent/confirm`, {
-            method: "POST", headers: { "Content-Type": "application/json", "X-Token": token },
-            body: JSON.stringify({ action: action })
+        const res = await fetch(`${API_URL}/agent/confirm`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", "X-Token": token },
+            body: JSON.stringify({ action })
         });
+        const data = await res.json().catch(() => ({}));
+        confBox.classList.add("hidden");
+
+        if (data.skill_id && data.skill_status) {
+            setSkillStatus(data.skill_id, data.skill_status);
+        }
+
+        if (data.executed && data.message) {
+            const chatBox = document.getElementById("chatBox");
+            appendChatMessage(chatBox, "ai", "AI", data.message, {
+                userPrompt: lastUserPrompt,
+                messageId: `ai-confirm-${Date.now()}`
+            });
+            setAvatarState("acting");
+            setTimeout(() => setAvatarState("idle"), 2000);
+            return;
+        }
+
+        if (data.message && action === "cancel") {
+            const chatBox = document.getElementById("chatBox");
+            appendChatMessage(chatBox, "ai", "AI", data.message, { userPrompt: lastUserPrompt });
+        }
+
+        if (action === "confirm" && !data.executed && data.message?.includes("received")) {
+            return;
+        }
     } catch (e) {
         console.error(e);
+        confBox.classList.add("hidden");
     }
 }
 
@@ -491,9 +832,12 @@ async function loadHistory() {
         const data = await res.json();
         const chatBox = document.getElementById("chatBox");
         chatBox.innerHTML = "";
-        data.reverse().forEach(item => {
+        data.reverse().forEach((item, index) => {
             appendChatMessage(chatBox, "user", "You", item.message);
-            appendChatMessage(chatBox, "ai", "AI", item.response);
+            appendChatMessage(chatBox, "ai", "AI", item.response, {
+                userPrompt: item.message,
+                messageId: `hist-${index}-${item.id || index}`
+            });
         });
         chatBox.scrollTop = chatBox.scrollHeight;
     }
@@ -547,6 +891,19 @@ function toggleRecording() {
     if (!isRecording) recognition.start();
     else recognition.stop();
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+    const messageInput = document.getElementById("messageInput");
+    if (messageInput) {
+        messageInput.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    }
+    toggleAssistantWidget("chat", true);
+});
 
 function togglePassword() {
     const pwd = document.getElementById("password");

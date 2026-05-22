@@ -142,11 +142,29 @@ async def stop_agent(current_user: dict = Depends(get_current_user)):
 @router.post("/agent/confirm")
 async def confirm_agent_action(req: ConfirmRequest, current_user: dict = Depends(get_current_user)):
     user_id = current_user["id"]
+
+    # Intent-router pending desktop action (Control Center)
+    from services.pending_actions import clear_pending, get_pending
+    from services.control_center_chat import execute_pending_for_user
+
+    if req.action == "confirm" and get_pending(user_id):
+        result = await execute_pending_for_user(user_id)
+        return result
+
+    if req.action == "cancel" and get_pending(user_id):
+        clear_pending(user_id)
+        return {
+            "executed": False,
+            "message": "Okay, I won't run that action.",
+            "skill_status": "ready",
+        }
+
+    # Agent vision loop confirmation (existing)
     if user_id in manager.user_events:
         manager.user_confirm_results[user_id] = req.action
         manager.user_events[user_id].set()
-        return {"message": f"Action {req.action} received."}
-    return {"message": "No pending action to confirm."}
+        return {"message": f"Action {req.action} received.", "executed": False}
+    return {"message": "No pending action to confirm.", "executed": False}
 
 @router.post("/training/start")
 async def start_training(current_user: dict = Depends(get_current_user)):

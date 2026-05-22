@@ -81,12 +81,14 @@
                     <span></span><span></span><span></span><span></span><span></span><span></span>
                 </div>
                 <div class="hero-overlay">
-                    <div class="system-chip">AI Control Center</div>
-                    <h1>Application Assistant</h1>
-                    <p>Desktop automation, vision analysis, and command orchestration in one cinematic workspace.</p>
-                    <div id="avatarContainer" class="avatar-container state-idle">
-                        <div class="avatar-orb">AI</div>
-                        <div id="avatarLabel" class="avatar-label">IDLE</div>
+                    <div class="hero-intro-card">
+                        <div class="system-chip">AI Control Center</div>
+                        <h1>Application Assistant</h1>
+                        <p>Command desktop automation and vision workflows from one workspace.</p>
+                        <div id="avatarContainer" class="avatar-container state-idle">
+                            <div class="avatar-orb">AI</div>
+                            <div id="avatarLabel" class="avatar-label">IDLE</div>
+                        </div>
                     </div>
                 </div>
             </section>
@@ -126,14 +128,14 @@
                                 <button type="button" class="panel-close" onclick="toggleAssistantWidget('skill', false)" aria-label="Minimize Skill Training">&times;</button>
                             </div>
 
-                            <div class="skill-grid">
-                                <article><span>DC</span><div><strong>Desktop Control</strong><small>Ready</small></div></article>
-                                <article><span>VC</span><div><strong>Voice Command</strong><small>Active</small></div></article>
-                                <article><span>WA</span><div><strong>Web Automation</strong><small>Ready</small></div></article>
-                                <article><span>SA</span><div><strong>Screenshot Analysis</strong><small>Ready</small></div></article>
-                                <article><span>RA</span><div><strong>Reason & Act Loop</strong><small>Active</small></div></article>
-                                <article><span>TM</span><div><strong>Task Memory</strong><small>Training</small></div></article>
-                                <article><span>AT</span><div><strong>AI Training</strong><small>Ready</small></div></article>
+                            <div class="skill-grid" id="skillGrid">
+                                <article class="skill-card" data-skill="DC" data-status="ready"><span>DC</span><div><strong>Desktop Control</strong><small class="skill-status">Ready</small></div></article>
+                                <article class="skill-card" data-skill="VC" data-status="ready"><span>VC</span><div><strong>Voice Command</strong><small class="skill-status">Ready</small></div></article>
+                                <article class="skill-card" data-skill="WA" data-status="ready"><span>WA</span><div><strong>Web Automation</strong><small class="skill-status">Ready</small></div></article>
+                                <article class="skill-card" data-skill="SA" data-status="ready"><span>SA</span><div><strong>Screenshot Analysis</strong><small class="skill-status">Ready</small></div></article>
+                                <article class="skill-card" data-skill="RA" data-status="ready"><span>RA</span><div><strong>Reason &amp; Act Loop</strong><small class="skill-status">Ready</small></div></article>
+                                <article class="skill-card" data-skill="TM" data-status="ready"><span>TM</span><div><strong>Task Memory</strong><small class="skill-status">Ready</small></div></article>
+                                <article class="skill-card" data-skill="AT" data-status="ready"><span>AT</span><div><strong>AI Training</strong><small class="skill-status">Ready</small></div></article>
                             </div>
 
                             <button id="startTrainBtn" onclick="startTraining()" class="cta-button w-full mb-6">Initialize Training</button>
@@ -175,38 +177,41 @@
                                 </div>
                             </div>
 
-                            <div id="chatBox" class="text-left mb-4" style="height: 250px;"></div>
-                            
-                            <div id="agentLogsContainer" class="hidden text-left mb-4 p-3 bg-slate-900 rounded-xl border border-slate-700 shadow-inner">
-                                <div class="flex justify-between items-center mb-2">
-                                    <span class="text-[10px] font-black text-rose-400 uppercase tracking-widest">Agent Terminal</span>
-                                    <span class="flex h-2 w-2 relative">
-                                        <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-75"></span>
-                                        <span class="relative inline-flex rounded-full h-2 w-2 bg-rose-500"></span>
-                                    </span>
+                            <div class="chat-body">
+                                <div id="chatBox" class="chat-messages" role="log" aria-live="polite"></div>
+                                <div id="chatTyping" class="chat-typing hidden" aria-hidden="true">
+                                    <span class="typing-avatar">AI</span>
+                                    <span class="typing-dots" aria-label="AI is thinking"><span></span><span></span><span></span></span>
+                                    <span class="typing-label">AI is thinking…</span>
                                 </div>
-                                <ul id="agentLogs" class="space-y-1 h-32 overflow-y-auto text-xs font-mono text-green-400"></ul>
-                                
-                                <div id="confirmationBox" class="hidden mt-3 p-3 bg-indigo-900/50 rounded-lg border border-indigo-500 flex justify-between items-center">
-                                    <span class="text-xs text-indigo-200" id="confirmationText">AI needs confirmation to proceed.</span>
-                                    <div class="flex gap-2">
-                                        <button onclick="confirmAction('confirm')" class="px-3 py-1 bg-green-600 hover:bg-green-500 text-white text-xs font-bold rounded">Confirm</button>
-                                        <button onclick="confirmAction('cancel')" class="px-3 py-1 bg-red-600 hover:bg-red-500 text-white text-xs font-bold rounded">Cancel</button>
+
+                                <div id="agentLogsContainer" class="agent-logs-panel hidden">
+                                    <div class="agent-logs-header">
+                                        <span>Agent Terminal</span>
+                                        <span class="agent-live-dot" aria-hidden="true"></span>
+                                    </div>
+                                    <ul id="agentLogs"></ul>
+                                    <div id="confirmationBox" class="confirmation-box hidden">
+                                        <span id="confirmationText">AI needs confirmation to proceed.</span>
+                                        <div class="confirmation-actions">
+                                            <button type="button" onclick="confirmAction('confirm')">Confirm</button>
+                                            <button type="button" class="cancel" onclick="confirmAction('cancel')">Cancel</button>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
 
-                            <div class="chat-composer">
-                                <div class="composer-row">
-                                    <input type="text" id="messageInput" placeholder="Command..." class="flex-grow">
-                                    <button onclick="stopAgent()" class="stop-agent-btn" title="Stop Agent">■</button>
-                                    <button onclick="sendMessage()" class="send-btn" aria-label="Send message">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                                    </button>
-                                </div>
-                                <div class="voice-row">
-                                    <button id="recordBtn" onclick="toggleRecording()" class="voice-btn">Voice Command</button>
-                                    <button id="stopSpeakBtn" onclick="stopSpeaking()" class="hidden stop-speak-btn">Stop AI</button>
+                                <div class="chat-composer">
+                                    <div class="composer-row">
+                                        <input type="text" id="messageInput" placeholder="Command..." class="flex-grow" autocomplete="off">
+                                        <button type="button" onclick="stopAgent()" class="stop-agent-btn" title="Stop Agent">■</button>
+                                        <button type="button" onclick="sendMessage()" class="send-btn" aria-label="Send message">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                                        </button>
+                                    </div>
+                                    <div class="voice-row">
+                                        <button type="button" id="recordBtn" onclick="toggleRecording()" class="voice-btn">Voice Command</button>
+                                        <button type="button" id="stopSpeakBtn" onclick="stopSpeaking()" class="hidden stop-speak-btn">Stop AI</button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
