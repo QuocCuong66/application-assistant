@@ -403,7 +403,23 @@ function toggleAssistantWidget(widgetName, forceOpen) {
         ? forceOpen
         : !widget.classList.contains("open");
 
-    widget.classList.toggle("open", shouldOpen);
+    document.querySelectorAll(".assistant-widget").forEach((item) => {
+        const isTarget = item === widget;
+        item.classList.toggle("open", isTarget && shouldOpen);
+    });
+
+    document.querySelectorAll("[data-widget-toggle]").forEach((button) => {
+        const isTarget = button.dataset.widgetToggle === widgetName;
+        button.classList.toggle("active", isTarget && shouldOpen);
+        button.setAttribute("aria-expanded", String(isTarget && shouldOpen));
+    });
+
+    if (widgetName === "chat" && shouldOpen) {
+        setTimeout(() => {
+            document.getElementById("messageInput")?.focus();
+            scrollChatToBottom();
+        }, 120);
+    }
 }
 
 // --- App Logic ---
@@ -487,6 +503,8 @@ function logout() {
     document.getElementById("appSection").classList.add("hidden");
     document.getElementById("trainingSection").classList.add("hidden");
     document.getElementById("chatBox").innerHTML = "";
+    toggleAssistantWidget("chat", false);
+    toggleAssistantWidget("skill", false);
     updateStatusUI(false);
 }
 
@@ -494,6 +512,8 @@ async function showApp() {
     document.getElementById("authSection").classList.add("hidden");
     document.getElementById("appSection").classList.remove("hidden");
     document.getElementById("trainingSection").classList.remove("hidden");
+    toggleAssistantWidget("chat", false);
+    toggleAssistantWidget("skill", false);
 
     const res = await fetch(`${API_URL}/auth/me`, {
         headers: { "X-Token": token }
@@ -902,7 +922,6 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         });
     }
-    toggleAssistantWidget("chat", true);
 });
 
 function togglePassword() {

@@ -45,7 +45,8 @@ def check_usage_limit(current_user: dict = Depends(get_current_user), db = Depen
             "request_count": 0,
             "last_reset_date": today
         }
-        usages.insert_one(usage_doc)
+        result = usages.insert_one(usage_doc)
+        usage_doc["_id"] = result.inserted_id
         usage = usage_doc
     else:
         # usage is a dict from MongoDB
