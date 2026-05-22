@@ -53,52 +53,51 @@ async def chat_endpoint(
         })
         ai_response = f"Đã gửi lệnh thực thi skill '{matched_task.get('name', '')}' xuống máy tính của bạn." if sent else "Không tìm thấy kết nối từ Desktop Agent trên máy bạn."
         action_result = "WebSocket Command Sent" if sent else "Agent Offline"
-        else:
-            from services.intent_router import (
-                AGENT_OFFLINE_MESSAGE,
-                confirmation_prompt,
-                detect_intent,
-                execution_message,
-            )
-            from services.pending_actions import get_pending, set_pending
-            from services.desktop_executor import execute_desktop_action
-            from services.intent_router import is_confirmation
-            from services.pending_actions import clear_pending
+    else:
+        from services.intent_router import (
+            AGENT_OFFLINE_MESSAGE,
+            confirmation_prompt,
+            detect_intent,
+            execution_message,
+            is_confirmation,
+        )
+        from services.pending_actions import clear_pending, get_pending, set_pending
+        from services.desktop_executor import execute_desktop_action
 
-            uid = current_user["id"]
-            pending = get_pending(uid)
-            if pending and is_confirmation(user_message) is True:
-                action = clear_pending(uid)
-                if ws_manager.is_connected(uid):
-                    await execute_desktop_action(uid, action)
-                    ai_response = execution_message(action)
-                    action_result = "Desktop action executed"
-                else:
+        uid = current_user["id"]
+        pending = get_pending(uid)
+        if pending and is_confirmation(user_message) is True:
+            action = clear_pending(uid)
+            if ws_manager.is_connected(uid):
+                await execute_desktop_action(uid, action)
+                ai_response = execution_message(action)
+                action_result = "Desktop action executed"
+            else:
+                ai_response = AGENT_OFFLINE_MESSAGE
+                action_result = "Agent Offline"
+        elif pending and is_confirmation(user_message) is False:
+            clear_pending(uid)
+            ai_response = "Okay, I won't run that action."
+            action_result = None
+        else:
+            intent_result = detect_intent(user_message)
+            action = intent_result.get("action")
+            if action and intent_result.get("confidence", 0) >= 0.7:
+                if not ws_manager.is_connected(uid):
                     ai_response = AGENT_OFFLINE_MESSAGE
                     action_result = "Agent Offline"
-            elif pending and is_confirmation(user_message) is False:
-                clear_pending(uid)
-                ai_response = "Okay, I won't run that action."
-                action_result = None
-            else:
-                intent_result = detect_intent(user_message)
-                action = intent_result.get("action")
-                if action and intent_result.get("confidence", 0) >= 0.7:
-                    if not ws_manager.is_connected(uid):
-                        ai_response = AGENT_OFFLINE_MESSAGE
-                        action_result = "Agent Offline"
-                    elif action.get("requires_confirmation"):
-                        set_pending(uid, action)
-                        ai_response = confirmation_prompt(action)
-                        action_result = "Confirmation required"
-                    else:
-                        await execute_desktop_action(uid, action)
-                        ai_response = execution_message(action)
-                        action_result = "Desktop action queued"
+                elif action.get("requires_confirmation"):
+                    set_pending(uid, action)
+                    ai_response = confirmation_prompt(action)
+                    action_result = "Confirmation required"
                 else:
-                    from services.control_center_chat import CONTROL_SYSTEM
-                    ai_response = brain.process_message(user_message, CONTROL_SYSTEM)
-                    action_result = None
+                    await execute_desktop_action(uid, action)
+                    ai_response = execution_message(action)
+                    action_result = "Desktop action queued"
+            else:
+                from services.control_center_chat import CONTROL_SYSTEM
+                ai_response = brain.process_message(user_message, CONTROL_SYSTEM)
+                action_result = None
 
     # Increment usage count in MongoDB
     db.usage.update_one(

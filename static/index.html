@@ -110,8 +110,8 @@
                 <button class="btn-pro dock-upgrade" onclick="upgradePro()">Upgrade to Pro</button>
 
                 <div class="assistant-widgets">
-                    <div class="assistant-widget skill-widget" data-widget="skill">
-                        <button type="button" class="bot-toggle" onclick="toggleAssistantWidget('skill')" aria-label="Open Skill Training">
+                    <div class="assistant-launchers" role="group" aria-label="Assistant launchers">
+                        <button type="button" class="bot-toggle" data-widget-toggle="skill" onclick="toggleAssistantWidget('skill')" aria-label="Open Skill Training" aria-expanded="false">
                             <span class="bot-avatar">
                                 <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 0 0-7 7v4a5 5 0 0 0 5 5h4a5 5 0 0 0 5-5v-4a7 7 0 0 0-7-7Zm-3 8.25a1.25 1.25 0 1 1 2.5 0 1.25 1.25 0 0 1-2.5 0Zm5 0a1.25 1.25 0 1 1 2.5 0 1.25 1.25 0 0 1-2.5 0ZM9 15h6v1.4H9V15Z"></path></svg>
                                 <span class="online-dot"></span>
@@ -119,6 +119,17 @@
                             <span class="bot-copy"><strong>Skill AI</strong><small>Training module</small></span>
                         </button>
 
+                        <button type="button" class="bot-toggle" data-widget-toggle="chat" onclick="toggleAssistantWidget('chat')" aria-label="Open Neural Chat" aria-expanded="false">
+                            <span class="bot-avatar">
+                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2h9A3.5 3.5 0 0 1 20 5.5v7A3.5 3.5 0 0 1 16.5 16H11l-4.6 4.1A.85.85 0 0 1 5 19.46V16.7A3.5 3.5 0 0 1 4 14.25V5.5Zm5 4.25a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2Zm3 0a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2Zm3 0a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2Z"></path></svg>
+                                <span class="online-dot"></span>
+                            </span>
+                            <span class="bot-copy"><strong>Neural Chat</strong><small>Assistant online</small></span>
+                        </button>
+                    </div>
+
+                    <div class="assistant-panels">
+                    <div class="assistant-widget skill-widget" data-widget="skill">
                         <div id="trainingSection" class="widget-panel skill-panel">
                             <div class="widget-header">
                                 <div>
@@ -153,14 +164,6 @@
                     </div>
 
                     <div class="assistant-widget chat-widget" data-widget="chat">
-                        <button type="button" class="bot-toggle" onclick="toggleAssistantWidget('chat')" aria-label="Open Neural Chat">
-                            <span class="bot-avatar">
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2h9A3.5 3.5 0 0 1 20 5.5v7A3.5 3.5 0 0 1 16.5 16H11l-4.6 4.1A.85.85 0 0 1 5 19.46V16.7A3.5 3.5 0 0 1 4 14.25V5.5Zm5 4.25a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2Zm3 0a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2Zm3 0a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2Z"></path></svg>
-                                <span class="online-dot"></span>
-                            </span>
-                            <span class="bot-copy"><strong>Neural Chat</strong><small>Assistant online</small></span>
-                        </button>
-
                         <div class="widget-panel chat-panel">
                             <div class="widget-header">
                                 <div>
@@ -215,6 +218,7 @@
                                 </div>
                             </div>
                         </div>
+                    </div>
                     </div>
                 </div>
             </aside>
