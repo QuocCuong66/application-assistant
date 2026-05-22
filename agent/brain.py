@@ -85,14 +85,14 @@ class Brain:
                 
         return f"Loop ended after {steps} steps."
 
-    def process_message(self, message: str) -> str:
+    def process_message(self, message: str, system_prompt=None) -> str:
         """Sends a message to OpenAI API and returns the response."""
         try:
             logging.info(f"Sending prompt to OpenAI: {message}")
             response = self.client.chat.completions.create(
                 model=self.model,
                 messages=[
-                    {"role": "system", "content": "You are a helpful AI assistant."},
+                    {"role": "system", "content": system_prompt or "You are a helpful AI assistant."},
                     {"role": "user", "content": message}
                 ],
                 timeout=15.0

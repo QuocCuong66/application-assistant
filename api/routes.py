@@ -14,7 +14,8 @@ from schemas import ChatRequest, ChatResponse, HistoryItem
 from api.deps import check_rate_limit, get_current_user, check_usage_limit
 
 from api.automation import manager as ws_manager
-from services.agent_loop import run_agent_loop
+from api.automation import ConfirmRequest, confirm_agent_action, stop_agent
+from services.control_center_chat import run_control_center_chat
 
 router = APIRouter()
 brain = Brain()
@@ -52,19 +53,52 @@ async def chat_endpoint(
         })
         ai_response = f"Đã gửi lệnh thực thi skill '{matched_task.get('name', '')}' xuống máy tính của bạn." if sent else "Không tìm thấy kết nối từ Desktop Agent trên máy bạn."
         action_result = "WebSocket Command Sent" if sent else "Agent Offline"
-    else:
-        # Xử lý các lệnh mặc định hoặc AI chat
-        if "open chrome" in user_message.lower():
-            sent = await ws_manager.send_command(current_user["id"], {"type": "direct", "action": "chrome"})
-            ai_response = "Đang mở Chrome trên máy bạn..." if sent else "Agent offline."
-            action_result = "Chrome Command Sent"
-        elif "open notepad" in user_message.lower():
-            sent = await ws_manager.send_command(current_user["id"], {"type": "direct", "action": "notepad"})
-            ai_response = "Đang mở Notepad trên máy bạn..." if sent else "Agent offline."
-            action_result = "Notepad Command Sent"
         else:
-            ai_response = brain.process_message(user_message)
-            action_result = None
+            from services.intent_router import (
+                AGENT_OFFLINE_MESSAGE,
+                confirmation_prompt,
+                detect_intent,
+                execution_message,
+            )
+            from services.pending_actions import get_pending, set_pending
+            from services.desktop_executor import execute_desktop_action
+            from services.intent_router import is_confirmation
+            from services.pending_actions import clear_pending
+
+            uid = current_user["id"]
+            pending = get_pending(uid)
+            if pending and is_confirmation(user_message) is True:
+                action = clear_pending(uid)
+                if ws_manager.is_connected(uid):
+                    await execute_desktop_action(uid, action)
+                    ai_response = execution_message(action)
+                    action_result = "Desktop action executed"
+                else:
+                    ai_response = AGENT_OFFLINE_MESSAGE
+                    action_result = "Agent Offline"
+            elif pending and is_confirmation(user_message) is False:
+                clear_pending(uid)
+                ai_response = "Okay, I won't run that action."
+                action_result = None
+            else:
+                intent_result = detect_intent(user_message)
+                action = intent_result.get("action")
+                if action and intent_result.get("confidence", 0) >= 0.7:
+                    if not ws_manager.is_connected(uid):
+                        ai_response = AGENT_OFFLINE_MESSAGE
+                        action_result = "Agent Offline"
+                    elif action.get("requires_confirmation"):
+                        set_pending(uid, action)
+                        ai_response = confirmation_prompt(action)
+                        action_result = "Confirmation required"
+                    else:
+                        await execute_desktop_action(uid, action)
+                        ai_response = execution_message(action)
+                        action_result = "Desktop action queued"
+                else:
+                    from services.control_center_chat import CONTROL_SYSTEM
+                    ai_response = brain.process_message(user_message, CONTROL_SYSTEM)
+                    action_result = None
 
     # Increment usage count in MongoDB
     db.usage.update_one(
@@ -98,10 +132,7 @@ async def agent_chat_endpoint(
     check_rate_limit(client_ip)
 
     user_message = request.message
-    logging.info(f"Agent Loop Input from {current_user.get('username', 'unknown')}: {user_message}")
-
-    if not ws_manager.is_connected(current_user["id"]):
-        raise HTTPException(status_code=400, detail="Desktop Agent chưa kết nối. Hãy chạy python desktop_agent.py")
+    logging.info(f"Control Center chat from {current_user.get('username', 'unknown')}: {user_message}")
 
     # Increment usage count in MongoDB
     db.usage.update_one(
@@ -109,11 +140,25 @@ async def agent_chat_endpoint(
         {"$inc": {"request_count": 1}}
     )
 
-    # Start the async generator
     return StreamingResponse(
-        run_agent_loop(current_user["id"], user_message, db=db),
-        media_type="application/x-ndjson"
+        run_control_center_chat(current_user["id"], user_message, db=db),
+        media_type="application/x-ndjson",
     )
+
+
+@router.post("/agent/stop")
+async def agent_stop_proxy(current_user: dict = Depends(get_current_user)):
+    """Backward-compatible alias (frontend calls /agent/stop)."""
+    return await stop_agent(current_user)
+
+
+@router.post("/agent/confirm")
+async def agent_confirm_proxy(
+    req: ConfirmRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    """Backward-compatible alias (frontend calls /agent/confirm)."""
+    return await confirm_agent_action(req, current_user)
 
 
 @router.get("/history", response_model=list[HistoryItem])
