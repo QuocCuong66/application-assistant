@@ -1,5 +1,8 @@
 {
   "version": 2,
+  "buildCommand": "",
+  "installCommand": "",
+  "framework": null,
   "rewrites": [
     {
       "source": "/static/(.*)",

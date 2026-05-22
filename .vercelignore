@@ -13,3 +13,17 @@ server_log.txt
 stderr.txt
 stdout.txt
 test_results.txt
+
+# Backend Python — deploy on Render only (not Vercel serverless)
+api/
+agent/
+services/
+voice/
+main.py
+config.py
+database.py
+schemas.py
+desktop_agent.py
+requirements.txt
+render.yaml
+.env.example
