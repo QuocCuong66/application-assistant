@@ -512,7 +512,7 @@ async function showApp() {
     document.getElementById("authSection").classList.add("hidden");
     document.getElementById("appSection").classList.remove("hidden");
     document.getElementById("trainingSection").classList.remove("hidden");
-    toggleAssistantWidget("chat", false);
+    toggleAssistantWidget("chat", true);
     toggleAssistantWidget("skill", false);
 
     const res = await fetch(`${API_URL}/auth/me`, {

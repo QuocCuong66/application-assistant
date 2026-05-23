@@ -94,3 +94,4 @@ Lưu ý: `desktop_agent.py` **không** deploy lên Render hay Vercel. File này 
 Khi màn hình hiện `✅ Đã kết nối thành công!`, bạn có thể lên giao diện Web (Vercel) và ra lệnh cho AI điều khiển máy tính.
 
 BACKEND_URL=https://application-assistant-backend.onrender.com
+server local : http://127.0.0.1:8000
