@@ -141,6 +141,21 @@ def handle_tool_call(tool, args):
         x, y = args.get("x"), args.get("y")
         pyautogui.doubleClick(x, y)
         return {"status": "double_clicked", "x": x, "y": y}
+
+    elif tool == "right_click":
+        x, y = args.get("x"), args.get("y")
+        pyautogui.rightClick(x, y)
+        return {"status": "right_clicked", "x": x, "y": y}
+
+    elif tool == "move":
+        x, y = args.get("x"), args.get("y")
+        pyautogui.moveTo(x, y)
+        return {"status": "moved", "x": x, "y": y}
+
+    elif tool == "drag":
+        x, y = args.get("x"), args.get("y")
+        pyautogui.dragTo(x, y)
+        return {"status": "dragged", "x": x, "y": y}
         
     elif tool == "type_text":
         text = args.get("text", "")
