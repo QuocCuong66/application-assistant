@@ -3,228 +3,279 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Assistant - Control Center</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Application Assistant</title>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-    <!-- Floating Toolbar -->
-    <div id="floatingToolbar" class="hidden fixed top-6 left-1/2 -translate-x-1/2 glass-panel px-6 py-3 z-50 flex items-center gap-4 shadow-2xl">
-        <span class="text-sm font-bold text-rose-500 uppercase tracking-wider">Skill Lab Recording</span>
-        <button id="ftStartBtn" onclick="ftStartTraining()" class="px-5 py-2 bg-rose-500 text-white rounded-full text-xs font-bold active:scale-95 transition-all">Start</button>
-        <button id="ftFinishBtn" onclick="ftFinishTraining()" class="hidden px-5 py-2 bg-slate-800 text-white rounded-full text-xs font-bold active:scale-95 transition-all">Finish</button>
-        <button onclick="ftClose()" class="text-slate-400 hover:text-slate-600" aria-label="Close toolbar">&times;</button>
+    <!-- Floating Toolbar for Skill Training (Clean/Minimal style) -->
+    <div id="floatingToolbar" class="hidden floating-toolbar" role="status" aria-label="Skill Lab Recording Status">
+        <span class="toolbar-title">Skill Recording Lab</span>
+        <div class="toolbar-actions">
+            <button id="ftStartBtn" onclick="ftStartTraining()" class="btn btn-record-start">Start</button>
+            <button id="ftFinishBtn" onclick="ftFinishTraining()" class="hidden btn btn-record-finish">Finish</button>
+            <button onclick="ftClose()" class="btn btn-close-toolbar" aria-label="Close toolbar">&times;</button>
+        </div>
     </div>
 
-    <div class="container">
-        <div id="alertBox" class="fixed top-6 right-6 px-6 py-3 rounded-2xl glass-panel text-rose-600 font-bold text-sm empty:hidden shadow-xl z-[100]"></div>
+    <!-- Alert Messages Box -->
+    <div id="alertBox" class="alert-box" role="alert" aria-live="assertive"></div>
 
-        <!-- Auth Section -->
-        <div id="authSection" class="fixed top-0 left-0 w-full h-full z-[60] flex items-center justify-center overflow-hidden bg-[#050a1f]">
-            <div class="cyber-bg-container">
-                <div class="cyber-aurora aurora-1"></div>
-                <div class="cyber-aurora aurora-2"></div>
-                <div class="cyber-aurora aurora-3"></div>
+    <!-- Backdrop overlay for mobile drawer sidebar -->
+    <div id="sidebarOverlay" class="sidebar-overlay" onclick="toggleSidebar()"></div>
+
+    <!-- Auth Section (Styled minimalist & clean) -->
+    <div id="authSection" class="auth-section">
+        <div class="auth-card">
+            <div class="auth-logo-wrapper">
+                <span class="auth-logo">AA</span>
             </div>
             
-            <div class="cyber-glass-panel relative w-full max-w-[420px] p-10 mx-4 flex flex-col items-center">
-                <div class="cyber-logo-wrapper mb-6 relative flex items-center justify-center w-20 h-20 rounded-full">
-                    <div class="absolute inset-0 rounded-full cyber-glow-ring"></div>
-                    <span class="text-4xl font-black text-transparent bg-clip-text bg-gradient-to-br from-cyan-400 to-fuchsia-500 z-10">QC</span>
+            <h2 class="auth-title">Application Assistant</h2>
+            <p class="auth-subtitle">Sign in to control desktop automation</p>
+            
+            <div class="auth-form-groups">
+                <div class="form-group">
+                    <label for="username" class="sr-only">Username or Email</label>
+                    <div class="input-with-icon">
+                        <span class="input-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                        </span>
+                        <input type="text" id="username" placeholder="Email or Username" required autocomplete="username">
+                    </div>
                 </div>
                 
-                <h2 class="text-[28px] font-black text-white mb-1 tracking-tight">AI AUTOMATION</h2>
-                <p class="text-[11px] text-cyan-300/80 uppercase tracking-[0.2em] mb-10 font-bold">Enter the AI control center</p>
-                
-                <div class="w-full space-y-5">
-                    <div class="relative input-group">
-                        <div class="input-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
-                        </div>
-                        <input type="text" id="username" placeholder="Email or Username" class="cyber-input w-full pl-12 pr-4 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400/50 transition-all text-sm">
-                    </div>
-                    
-                    <div class="relative input-group password-group">
-                        <div class="input-icon">
+                <div class="form-group password-group">
+                    <label for="password" class="sr-only">Password</label>
+                    <div class="input-with-icon">
+                        <span class="input-icon">
                             <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
-                        </div>
-                        <input type="password" id="password" placeholder="Password" class="cyber-input w-full pl-12 pr-12 py-4 bg-white/5 border border-white/10 rounded-2xl text-white placeholder-slate-500 focus:outline-none focus:border-cyan-400/50 transition-all text-sm">
-                        <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 pr-4 flex items-center text-slate-500 hover:text-cyan-400 transition-colors">
+                        </span>
+                        <input type="password" id="password" placeholder="Password" required autocomplete="current-password">
+                        <button type="button" onclick="togglePassword()" class="btn-toggle-pwd" aria-label="Toggle Password Visibility">
                             <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
                         </button>
                     </div>
                 </div>
-                
-                <div class="w-full mt-8 space-y-6">
-                    <button onclick="login()" class="cyber-btn w-full py-4 rounded-2xl font-black text-white uppercase tracking-[0.15em] text-xs relative overflow-hidden transition-all">
-                        <span class="relative z-10">Sign In</span>
-                        <div class="cyber-btn-glow absolute inset-0 opacity-0 transition-opacity"></div>
-                    </button>
-                    
-                    <button onclick="register()" class="w-full text-center text-xs font-bold text-cyan-400 hover:text-fuchsia-400 transition-colors duration-300">
-                        Don't have an account? Create your future
-                    </button>
-                </div>
             </div>
-        </div>
-
-        <!-- App Section -->
-        <div id="appSection" class="hidden app-shell">
-            <section class="hero-background" aria-label="AI visual workspace">
-                <div class="background-slider" aria-hidden="true">
-                    <span class="bg-slide slide-1"></span>
-                    <span class="bg-slide slide-2"></span>
-                    <span class="bg-slide slide-3"></span>
-                </div>
-                <div class="ambient-glow" aria-hidden="true"></div>
-                <div class="particles" aria-hidden="true">
-                    <span></span><span></span><span></span><span></span><span></span><span></span>
-                </div>
-                <div class="hero-overlay">
-                    <div class="hero-intro-card">
-                        <div class="system-chip">AI Control Center</div>
-                        <h1>Application Assistant</h1>
-                        <p>Command desktop automation and vision workflows from one workspace.</p>
-                        <div id="avatarContainer" class="avatar-container state-idle">
-                            <div class="avatar-orb">AI</div>
-                            <div id="avatarLabel" class="avatar-label">IDLE</div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <aside class="control-dock" aria-label="Assistant controls">
-                <div class="dock-topbar">
-                    <div>
-                        <span class="dock-kicker">Workspace</span>
-                        <h2>Neural Dock</h2>
-                    </div>
-                    <button onclick="logout()" class="dock-logout">Logout</button>
-                </div>
-
-                <div class="account-strip">
-                    <span>ID: <strong id="userIdDisplay">...</strong></span>
-                    <span>Status: <strong id="userStatus">Free Access</strong></span>
-                </div>
-
-                <button class="btn-pro dock-upgrade" onclick="upgradePro()">Upgrade to Pro</button>
-
-                <div class="assistant-widgets">
-                    <div class="assistant-launchers" role="group" aria-label="Assistant launchers">
-                        <button type="button" class="bot-toggle" data-widget-toggle="skill" onclick="toggleAssistantWidget('skill')" aria-label="Open Skill Training" aria-expanded="false">
-                            <span class="bot-avatar">
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a7 7 0 0 0-7 7v4a5 5 0 0 0 5 5h4a5 5 0 0 0 5-5v-4a7 7 0 0 0-7-7Zm-3 8.25a1.25 1.25 0 1 1 2.5 0 1.25 1.25 0 0 1-2.5 0Zm5 0a1.25 1.25 0 1 1 2.5 0 1.25 1.25 0 0 1-2.5 0ZM9 15h6v1.4H9V15Z"></path></svg>
-                                <span class="online-dot"></span>
-                            </span>
-                            <span class="bot-copy"><strong>Skill AI</strong><small>Training module</small></span>
-                        </button>
-
-                        <button type="button" class="bot-toggle" data-widget-toggle="chat" onclick="toggleAssistantWidget('chat')" aria-label="Open Neural Chat" aria-expanded="false">
-                            <span class="bot-avatar">
-                                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5.5A3.5 3.5 0 0 1 7.5 2h9A3.5 3.5 0 0 1 20 5.5v7A3.5 3.5 0 0 1 16.5 16H11l-4.6 4.1A.85.85 0 0 1 5 19.46V16.7A3.5 3.5 0 0 1 4 14.25V5.5Zm5 4.25a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2Zm3 0a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2Zm3 0a1.1 1.1 0 1 0 0-2.2 1.1 1.1 0 0 0 0 2.2Z"></path></svg>
-                                <span class="online-dot"></span>
-                            </span>
-                            <span class="bot-copy"><strong>Neural Chat</strong><small>Assistant online</small></span>
-                        </button>
-                    </div>
-
-                    <div class="assistant-panels">
-                    <div class="assistant-widget skill-widget" data-widget="skill">
-                        <div id="trainingSection" class="widget-panel skill-panel">
-                            <div class="widget-header">
-                                <div>
-                                    <span class="dock-kicker">Module 1</span>
-                                    <h3>Skill Training</h3>
-                                </div>
-                                <button type="button" class="panel-close" onclick="toggleAssistantWidget('skill', false)" aria-label="Minimize Skill Training">&times;</button>
-                            </div>
-
-                            <div class="skill-grid" id="skillGrid">
-                                <article class="skill-card" data-skill="DC" data-status="ready"><span>DC</span><div><strong>Desktop Control</strong><small class="skill-status">Ready</small></div></article>
-                                <article class="skill-card" data-skill="VC" data-status="ready"><span>VC</span><div><strong>Voice Command</strong><small class="skill-status">Ready</small></div></article>
-                                <article class="skill-card" data-skill="WA" data-status="ready"><span>WA</span><div><strong>Web Automation</strong><small class="skill-status">Ready</small></div></article>
-                                <article class="skill-card" data-skill="SA" data-status="ready"><span>SA</span><div><strong>Screenshot Analysis</strong><small class="skill-status">Ready</small></div></article>
-                                <article class="skill-card" data-skill="RA" data-status="ready"><span>RA</span><div><strong>Reason &amp; Act Loop</strong><small class="skill-status">Ready</small></div></article>
-                                <article class="skill-card" data-skill="TM" data-status="ready"><span>TM</span><div><strong>Task Memory</strong><small class="skill-status">Ready</small></div></article>
-                                <article class="skill-card" data-skill="AT" data-status="ready"><span>AT</span><div><strong>AI Training</strong><small class="skill-status">Ready</small></div></article>
-                            </div>
-
-                            <button id="startTrainBtn" onclick="startTraining()" class="cta-button w-full mb-6">Initialize Training</button>
-                            
-                            <div id="saveTaskDiv" class="hidden space-y-4 p-5 bg-white/50 rounded-2xl border-2 border-rose-50 mb-6">
-                                <input type="text" id="taskNameInput" placeholder="Skill Name" class="w-full">
-                                <button onclick="saveTask()" class="cta-button w-full text-sm">Save Neural Pattern</button>
-                            </div>
-
-                            <div class="learned-skills">
-                                <h4>Learned Skills</h4>
-                                <ul id="taskList" class="space-y-3"></ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="assistant-widget chat-widget" data-widget="chat">
-                        <div class="widget-panel chat-panel">
-                            <div class="widget-header">
-                                <div>
-                                    <span class="dock-kicker">Module 2</span>
-                                    <h3>Neural Chat</h3>
-                                </div>
-                                <div class="panel-actions">
-                                    <button type="button" class="clear-chat-btn" onclick="clearChat()" title="Clear chat" aria-label="Clear chat">
-                                        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-                                            <path d="M3 6h18"></path><path d="M8 6V4h8v2"></path><path d="M19 6l-1 14H6L5 6"></path><path d="M10 11v5"></path><path d="M14 11v5"></path>
-                                        </svg>
-                                    </button>
-                                    <button type="button" class="panel-close" onclick="toggleAssistantWidget('chat', false)" aria-label="Minimize Neural Chat">&times;</button>
-                                </div>
-                            </div>
-
-                            <div class="chat-body">
-                                <div id="chatBox" class="chat-messages" role="log" aria-live="polite"></div>
-                                <div id="chatTyping" class="chat-typing hidden" aria-hidden="true">
-                                    <span class="typing-avatar">AI</span>
-                                    <span class="typing-dots" aria-label="AI is thinking"><span></span><span></span><span></span></span>
-                                    <span class="typing-label">AI is thinking…</span>
-                                </div>
-
-                                <div id="agentLogsContainer" class="agent-logs-panel hidden">
-                                    <div class="agent-logs-header">
-                                        <span>Agent Terminal</span>
-                                        <span class="agent-live-dot" aria-hidden="true"></span>
-                                    </div>
-                                    <ul id="agentLogs"></ul>
-                                    <div id="confirmationBox" class="confirmation-box hidden">
-                                        <span id="confirmationText">AI needs confirmation to proceed.</span>
-                                        <div class="confirmation-actions">
-                                            <button type="button" onclick="confirmAction('confirm')">Confirm</button>
-                                            <button type="button" class="cancel" onclick="confirmAction('cancel')">Cancel</button>
-                                        </div>
-                                    </div>
-                                </div>
-
-                                <div class="chat-composer">
-                                    <div class="composer-row">
-                                        <input type="text" id="messageInput" placeholder="Command..." class="flex-grow" autocomplete="off">
-                                        <button type="button" onclick="stopAgent()" class="stop-agent-btn" title="Stop Agent">■</button>
-                                        <button type="button" onclick="sendMessage()" class="send-btn" aria-label="Send message">
-                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-                                        </button>
-                                    </div>
-                                    <div class="voice-row">
-                                        <button type="button" id="recordBtn" onclick="toggleRecording()" class="voice-btn">Voice Command</button>
-                                        <button type="button" id="stopSpeakBtn" onclick="stopSpeaking()" class="hidden stop-speak-btn">Stop AI</button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    </div>
-                </div>
-            </aside>
+            
+            <div class="auth-actions">
+                <button onclick="login()" class="btn btn-primary">Sign In</button>
+                <button onclick="register()" class="btn-link">Don't have an account? Sign Up</button>
+            </div>
         </div>
     </div>
 
+    <!-- App Section -->
+    <div id="appSection" class="hidden app-shell">
+        
+        <!-- LEFT SIDEBAR -->
+        <aside id="sidebar" class="sidebar" aria-label="Main Navigation">
+            <div class="sidebar-header">
+                <div class="logo">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="logo-icon"><path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12c0-3.3 1.59-6.229 4.045-8.035"/><path d="M12 6v6l4 2"/></svg>
+                    <span>Assistant</span>
+                </div>
+                <button onclick="toggleSidebar()" class="btn-sidebar-toggle-close" aria-label="Close sidebar">✕</button>
+            </div>
+            
+            <button id="newChatBtn" onclick="clearChat()" class="btn-new-chat" aria-label="Start a new chat session">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <span>New Chat</span>
+            </button>
+            
+            <div class="sidebar-scroll-container">
+                <!-- Recent Conversations -->
+                <section class="sidebar-section" aria-labelledby="heading-recent">
+                    <h3 id="heading-recent" class="sidebar-heading">Recent Conversations</h3>
+                    <ul id="recentConversations" class="recent-list">
+                        <!-- Dynamically populated from script.js -->
+                    </ul>
+                </section>
+                
+                <!-- Projects (Learned Skills / Automation Tasks) -->
+                <section class="sidebar-section" aria-labelledby="heading-projects">
+                    <div class="section-title-row">
+                        <h3 id="heading-projects" class="sidebar-heading">Projects</h3>
+                        <button onclick="startTraining()" class="btn-sidebar-action" title="Train New Skill" aria-label="Train new skill">+</button>
+                    </div>
+                    <ul id="taskList" class="projects-list">
+                        <!-- Dynamically populated from script.js -->
+                    </ul>
+                </section>
+
+                <!-- Active System Skills (Maintained for JS compatibility updates) -->
+                <section class="sidebar-section" aria-labelledby="heading-skills">
+                    <h3 id="heading-skills" class="sidebar-heading">Active Skills</h3>
+                    <ul class="skills-status-list">
+                        <li class="skill-status-item skill-card" data-skill="DC" data-status="ready">
+                            <span class="status-indicator-dot"></span>
+                            <div class="skill-info">
+                                <span class="skill-name">Desktop Control</span>
+                                <small class="skill-status">Ready</small>
+                            </div>
+                        </li>
+                        <li class="skill-status-item skill-card" data-skill="VC" data-status="ready">
+                            <span class="status-indicator-dot"></span>
+                            <div class="skill-info">
+                                <span class="skill-name">Voice Command</span>
+                                <small class="skill-status">Ready</small>
+                            </div>
+                        </li>
+                        <li class="skill-status-item skill-card" data-skill="WA" data-status="ready">
+                            <span class="status-indicator-dot"></span>
+                            <div class="skill-info">
+                                <span class="skill-name">Web Automation</span>
+                                <small class="skill-status">Ready</small>
+                            </div>
+                        </li>
+                        <li class="skill-status-item skill-card" data-skill="SA" data-status="ready">
+                            <span class="status-indicator-dot"></span>
+                            <div class="skill-info">
+                                <span class="skill-name">Screenshot Analysis</span>
+                                <small class="skill-status">Ready</small>
+                            </div>
+                        </li>
+                        <li class="skill-status-item skill-card" data-skill="RA" data-status="ready">
+                            <span class="status-indicator-dot"></span>
+                            <div class="skill-info">
+                                <span class="skill-name">Reason &amp; Act Loop</span>
+                                <small class="skill-status">Ready</small>
+                            </div>
+                        </li>
+                        <li class="skill-status-item skill-card" data-skill="TM" data-status="ready">
+                            <span class="status-indicator-dot"></span>
+                            <div class="skill-info">
+                                <span class="skill-name">Task Memory</span>
+                                <small class="skill-status">Ready</small>
+                            </div>
+                        </li>
+                        <li class="skill-status-item skill-card" data-skill="AT" data-status="ready">
+                            <span class="status-indicator-dot"></span>
+                            <div class="skill-info">
+                                <span class="skill-name">AI Training</span>
+                                <small class="skill-status">Ready</small>
+                            </div>
+                        </li>
+                    </ul>
+                </section>
+            </div>
+            
+            <!-- Settings & Profile Section (Bottom) -->
+            <div class="sidebar-footer">
+                <div class="user-strip">
+                    <div class="user-avatar" aria-hidden="true">QC</div>
+                    <div class="user-details">
+                        <span class="user-id" id="userIdDisplay">Loading...</span>
+                        <span class="user-tier" id="userStatus">Free Access</span>
+                    </div>
+                </div>
+                <div class="footer-actions">
+                    <button class="btn btn-outline btn-pro" onclick="upgradePro()">Upgrade to Pro</button>
+                    <button class="btn btn-outline btn-logout" onclick="logout()">Logout</button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- RIGHT PANEL (Main Chat Dashboard) -->
+        <main class="right-panel" aria-label="Chat and Automation Interface">
+            
+            <!-- Chat Header -->
+            <header class="chat-header">
+                <div class="header-left">
+                    <button onclick="toggleSidebar()" class="btn-menu-toggle" aria-label="Toggle Navigation Sidebar">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                    </button>
+                    <h2 class="chat-title">Application Assistant</h2>
+                </div>
+                
+                <!-- Agent Panel Status Bar (Top-Right) -->
+                <div class="header-right">
+                    <div id="avatarContainer" class="avatar-container state-idle" role="status" aria-live="polite">
+                        <span id="avatarLabel" class="status-label">Ready</span>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Chat Messages Container -->
+            <div id="chatBox" class="chat-messages" role="log" aria-live="polite">
+                <!-- Dynamically populated from script.js -->
+            </div>
+
+            <!-- Typing Indicator -->
+            <div id="chatTyping" class="chat-typing hidden" aria-hidden="true">
+                <span class="typing-dots" aria-label="AI is thinking"><span></span><span></span><span></span></span>
+                <span class="typing-label">AI is thinking…</span>
+            </div>
+
+            <!-- Agent Logs / Terminal -->
+            <div id="agentLogsContainer" class="agent-logs-panel hidden">
+                <div class="agent-logs-header">
+                    <span>Agent Operations Log</span>
+                    <span class="agent-live-dot" aria-hidden="true"></span>
+                </div>
+                <ul id="agentLogs" class="agent-logs-list"></ul>
+                
+                <!-- Confirmation Prompt Box -->
+                <div id="confirmationBox" class="confirmation-box hidden">
+                    <span id="confirmationText">AI requires confirmation to proceed.</span>
+                    <div class="confirmation-actions">
+                        <button type="button" onclick="confirmAction('confirm')" class="btn btn-confirm">Confirm</button>
+                        <button type="button" onclick="confirmAction('cancel')" class="btn btn-cancel">Cancel</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Save Task Training Overlay Box (Triggered when recording completes) -->
+            <div id="saveTaskDiv" class="hidden save-task-container">
+                <div class="save-task-header">Save New Skill Pattern</div>
+                <div class="save-task-body">
+                    <input type="text" id="taskNameInput" placeholder="Skill Name (e.g. Open excel)">
+                    <button onclick="saveTask()" class="btn btn-primary btn-save">Save Skill</button>
+                </div>
+            </div>
+
+            <!-- Input Container (Fixed Bottom) -->
+            <footer class="input-container">
+                <div class="input-box-wrapper">
+                    <!-- Text-to-Speech Stop Indicator (Floating near input box) -->
+                    <button type="button" id="stopSpeakBtn" onclick="stopSpeaking()" class="hidden btn btn-stop-speak" aria-label="Stop AI voice output">
+                        🛑 Stop Speaking
+                    </button>
+                    
+                    <div class="input-box">
+                        <!-- Attachment Button -->
+                        <button type="button" id="attachBtn" class="btn-input-action" aria-label="Attach File">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                        </button>
+                        
+                        <!-- Text Input -->
+                        <input type="text" id="messageInput" placeholder="How can I help you today?" autocomplete="off" aria-label="Command input field">
+                        
+                        <!-- Voice Command Button -->
+                        <button type="button" id="recordBtn" onclick="toggleRecording()" class="btn-input-action" aria-label="Speak voice command">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                        </button>
+                        
+                        <!-- Stop Execution Button -->
+                        <button type="button" onclick="stopAgent()" class="btn-input-action btn-stop-agent" title="Stop execution" aria-label="Stop agent execution">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg>
+                        </button>
+
+                        <!-- Send Button -->
+                        <button type="button" id="sendBtn" onclick="sendMessage()" class="btn-send" aria-label="Send message">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        </button>
+                    </div>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Core App Config -->
     <script src="/static/config.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify/dist/purify.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
