@@ -11,65 +11,11 @@ console.log("🔌 Using WS_URL:", WS_URL);
 
 let token = localStorage.getItem("token");
 
-// --- Canvas Particle System ---
-const canvas = document.getElementById('bgCanvas');
-const ctx = canvas ? canvas.getContext('2d') : null;
-let particles = [];
+// --- Canvas Particle System Disabled ---
+function initCanvas() {}
+function createParticles() {}
+function animateParticles() {}
 
-function initCanvas() {
-    if (!canvas) return;
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-}
-
-class Particle {
-    constructor() {
-        this.x = Math.random() * canvas.width;
-        this.y = Math.random() * canvas.height;
-        this.size = Math.random() * 2 + 1;
-        this.speedX = Math.random() * 1 - 0.5;
-        this.speedY = Math.random() * 1 - 0.5;
-        this.color = 'rgba(79, 70, 229, 0.1)';
-    }
-    update() {
-        this.x += this.speedX;
-        this.y += this.speedY;
-        if (this.x > canvas.width) this.x = 0;
-        else if (this.x < 0) this.x = canvas.width;
-        if (this.y > canvas.height) this.y = 0;
-        else if (this.y < 0) this.y = canvas.height;
-    }
-    draw() {
-        ctx.fillStyle = this.color;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-    }
-}
-
-function createParticles() {
-    if (!canvas) return;
-    particles = [];
-    const count = (canvas.width * canvas.height) / 15000;
-    for (let i = 0; i < count; i++) {
-        particles.push(new Particle());
-    }
-}
-
-function animateParticles() {
-    if (!ctx) return;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    particles.forEach(p => {
-        p.update();
-        p.draw();
-    });
-    requestAnimationFrame(animateParticles);
-}
-
-window.addEventListener('resize', () => {
-    initCanvas();
-    createParticles();
-});
 
 function escapeHtml(value) {
     const div = document.createElement("div");
@@ -396,31 +342,14 @@ async function regenerateFromPrompt(prompt, aiRow) {
 }
 
 function toggleAssistantWidget(widgetName, forceOpen) {
-    const widget = document.querySelector(`.assistant-widget[data-widget="${widgetName}"]`);
-    if (!widget) return;
-
-    const shouldOpen = typeof forceOpen === "boolean"
-        ? forceOpen
-        : !widget.classList.contains("open");
-
-    document.querySelectorAll(".assistant-widget").forEach((item) => {
-        const isTarget = item === widget;
-        item.classList.toggle("open", isTarget && shouldOpen);
-    });
-
-    document.querySelectorAll("[data-widget-toggle]").forEach((button) => {
-        const isTarget = button.dataset.widgetToggle === widgetName;
-        button.classList.toggle("active", isTarget && shouldOpen);
-        button.setAttribute("aria-expanded", String(isTarget && shouldOpen));
-    });
-
-    if (widgetName === "chat" && shouldOpen) {
+    if (widgetName === "chat") {
         setTimeout(() => {
             document.getElementById("messageInput")?.focus();
             scrollChatToBottom();
         }, 120);
     }
 }
+
 
 // --- App Logic ---
 window.onload = () => {
@@ -439,13 +368,24 @@ function showAlert(msg) {
     setTimeout(() => alertBox.innerText = "", 5000);
 }
 
+const STATE_DISPLAY_NAMES = {
+    idle: "Ready",
+    thinking: "Thinking",
+    acting: "Executing",
+    waiting_confirmation: "Waiting",
+    listening: "Listening",
+    error: "Error"
+};
+
 function setAvatarState(state) {
     const container = document.getElementById("avatarContainer");
     const label = document.getElementById("avatarLabel");
     if (!container || !label) return;
     container.className = `avatar-container state-${state}`;
-    label.innerText = state.toUpperCase();
+    const displayName = STATE_DISPLAY_NAMES[state] || (state.charAt(0).toUpperCase() + state.slice(1));
+    label.innerText = displayName;
 }
+
 
 function updateStatusUI(isPro) {
     const statusEl = document.getElementById("userStatus");
@@ -537,23 +477,31 @@ async function loadTrainedTasks() {
     if (res.status === 200) {
         const tasks = await res.json();
         const taskList = document.getElementById("taskList");
+        if (!taskList) return;
         taskList.innerHTML = "";
+        if (tasks.length === 0) {
+            taskList.innerHTML = `<li class="project-empty">No skills trained</li>`;
+            return;
+        }
         tasks.forEach(task => {
+            const safeName = task.name.replace(/'/g, "\\'");
+            const safeNote = (task.note || '').replace(/'/g, "\\'");
             taskList.innerHTML += `
-                <li class="flex flex-col gap-2 p-4 bg-white/50 rounded-xl border border-slate-100">
-                    <div class="flex items-center justify-between">
-                        <span class="text-sm font-bold text-slate-700">${task.name}</span>
-                        <div class="flex gap-2">
-                            <button onclick="executeTrainedTask('${task.id}')" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-xs font-black hover:bg-indigo-700 transition-all shadow-md">RUN</button>
-                            <button onclick="editTask('${task.id}', '${task.name.replace(/'/g, "\\'")}', '${(task.note || '').replace(/'/g, "\\'")}')" class="px-4 py-2 bg-amber-500 text-white rounded-lg text-xs font-black hover:bg-amber-600 transition-all shadow-md">EDIT</button>
-                            <button onclick="deleteTask('${task.id}')" class="px-4 py-2 bg-rose-500 text-white rounded-lg text-xs font-black hover:bg-rose-600 transition-all shadow-md">DEL</button>
-                        </div>
+                <li class="project-item">
+                    <div class="project-info" title="${task.note || task.name}">
+                        <span class="project-name">${task.name}</span>
+                        ${task.note ? `<span class="project-note">${task.note}</span>` : ''}
                     </div>
-                    ${task.note ? `<p class="text-[10px] text-slate-400 italic">Note: ${task.note}</p>` : ''}
+                    <div class="project-actions">
+                        <button onclick="executeTrainedTask('${task.id}')" class="btn-proj-run" title="Run skill">▶</button>
+                        <button onclick="editTask('${task.id}', '${safeName}', '${safeNote}')" class="btn-proj-edit" title="Edit skill">✎</button>
+                        <button onclick="deleteTask('${task.id}')" class="btn-proj-delete" title="Delete skill">✕</button>
+                    </div>
                 </li>`;
         });
     }
 }
+
 
 async function editTask(taskId, currentName, currentNote) {
     const newName = prompt("Enter new Skill Name:", currentName);
@@ -846,13 +794,53 @@ async function clearChat() {
     }
 }
 
+function renderRecentConversations(data) {
+    const list = document.getElementById("recentConversations");
+    if (!list) return;
+    list.innerHTML = "";
+    
+    const recentItems = data.slice(0, 10);
+    if (recentItems.length === 0) {
+        list.innerHTML = `<li class="recent-empty">No recent chats</li>`;
+        return;
+    }
+    
+    recentItems.forEach((item) => {
+        const li = document.createElement("li");
+        li.className = "recent-item";
+        
+        const icon = document.createElement("span");
+        icon.className = "recent-icon";
+        icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+        
+        const text = document.createElement("span");
+        text.className = "recent-text";
+        text.textContent = item.message.length > 28 ? item.message.slice(0, 25) + "..." : item.message;
+        text.title = item.message;
+        
+        li.append(icon, text);
+        li.addEventListener("click", () => {
+            const input = document.getElementById("messageInput");
+            if (input) {
+                input.value = item.message;
+                input.focus();
+            }
+        });
+        list.appendChild(li);
+    });
+}
+
 async function loadHistory() {
     const res = await fetch(`${API_URL}/history`, { headers: { "X-Token": token } });
     if (res.status === 200) {
         const data = await res.json();
+        
+        renderRecentConversations(data);
+        
         const chatBox = document.getElementById("chatBox");
         chatBox.innerHTML = "";
-        data.reverse().forEach((item, index) => {
+        const displayData = [...data].reverse();
+        displayData.forEach((item, index) => {
             appendChatMessage(chatBox, "user", "You", item.message);
             appendChatMessage(chatBox, "ai", "AI", item.response, {
                 userPrompt: item.message,
@@ -862,6 +850,7 @@ async function loadHistory() {
         chatBox.scrollTop = chatBox.scrollHeight;
     }
 }
+
 
 async function upgradePro() {
     const res = await fetch(`${API_URL}/payment/create_url`, {
@@ -888,8 +877,10 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
     recognition.onstart = () => {
         setAvatarState('listening');
         const btn = document.getElementById("recordBtn");
-        btn.innerText = "🛑 Recording...";
-        btn.className = "flex-1 py-2.5 bg-rose-500 text-white rounded-lg text-xs font-bold";
+        if (btn) {
+            btn.classList.add("recording");
+            btn.setAttribute("aria-label", "Stop recording");
+        }
         isRecording = true;
     };
     recognition.onresult = (event) => {
@@ -897,14 +888,18 @@ if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
         sendMessage();
     };
     recognition.onend = () => {
-        if (document.getElementById("avatarLabel").innerText === 'LISTENING') {
+        const labelText = document.getElementById("avatarLabel")?.innerText;
+        if (labelText === 'LISTENING' || labelText === 'Listening') {
             setAvatarState('idle');
         }
         const btn = document.getElementById("recordBtn");
-        btn.innerText = "🎤 Speak Command";
-        btn.className = "flex-1 btn-outline py-2.5 text-xs";
+        if (btn) {
+            btn.classList.remove("recording");
+            btn.setAttribute("aria-label", "Speak voice command");
+        }
         isRecording = false;
     };
+
 }
 function toggleRecording() {
     if (!recognition) return;
@@ -935,3 +930,11 @@ function togglePassword() {
         eyeIcon.innerHTML = '<path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle>';
     }
 }
+
+function toggleSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    const overlay = document.getElementById("sidebarOverlay");
+    if (sidebar) sidebar.classList.toggle("open");
+    if (overlay) overlay.classList.toggle("active");
+}
+
