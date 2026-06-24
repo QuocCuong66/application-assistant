@@ -4,7 +4,7 @@ import os
 
 # --- TỰ ĐỘNG CÀI ĐẶT THƯ VIỆN ---
 def install_dependencies():
-    required = ["websockets", "pyautogui", "pynput", "Pillow"]
+    required = ["websockets", "pyautogui", "pynput", "Pillow", "pyperclip"]
     for lib in required:
         try:
             __import__(lib.lower() if lib != "Pillow" else "PIL")
@@ -124,13 +124,14 @@ def handle_tool_call(tool, args):
     if tool == "screenshot":
         # Chụp ảnh và resize nếu màn hình quá lớn
         screenshot = pyautogui.screenshot()
+        original_size = screenshot.size
         # Thay đổi kích thước để tiết kiệm token
         screenshot.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
         
         buffered = io.BytesIO()
         screenshot.save(buffered, format="PNG")
         img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        return {"data": img_str, "size": screenshot.size}
+        return {"data": img_str, "size": screenshot.size, "original_size": original_size}
         
     elif tool == "click":
         x, y = args.get("x"), args.get("y")
@@ -159,12 +160,21 @@ def handle_tool_call(tool, args):
         
     elif tool == "type_text":
         text = args.get("text", "")
-        # Thay vì gõ quá nhanh, set khoảng thời gian gõ để giống người
-        for char in text:
-            if EMERGENCY_STOP:
-                return {"status": "error", "error": "Emergency stop active"}
-            pyautogui.write(char)
-            time.sleep(0.01)
+        if EMERGENCY_STOP:
+            return {"status": "error", "error": "Emergency stop active"}
+        # Sử dụng clipboard để hỗ trợ Unicode đầy đủ
+        try:
+            import pyperclip
+            pyperclip.copy(text)
+            pyautogui.hotkey('ctrl', 'v')
+            time.sleep(0.05)
+        except ImportError:
+            # Fallback: gõ từng ký tự nếu không có pyperclip
+            for char in text:
+                if EMERGENCY_STOP:
+                    return {"status": "error", "error": "Emergency stop active"}
+                pyautogui.write(char)
+                time.sleep(0.01)
         return {"status": "typed", "text": text}
         
     elif tool == "press":

@@ -8,6 +8,9 @@ import json
 import logging
 from typing import Any, AsyncGenerator, Dict
 
+# Per-user lock to prevent concurrent agent loops (mitigates R10)
+_agent_locks: Dict[str, asyncio.Lock] = {}
+
 from api.automation import manager as ws_manager
 from agent.brain import Brain
 from services.agent_loop import run_agent_loop
@@ -192,6 +195,17 @@ async def run_control_center_chat(user_id: str, message: str, db=None) -> AsyncG
         return
 
     if ws_manager.is_connected(user_id) and _should_use_agent_loop(message, intent_result):
+        # Concurrency guard — only one agent loop per user at a time (R10)
+        if user_id not in _agent_locks:
+            _agent_locks[user_id] = asyncio.Lock()
+
+        if _agent_locks[user_id].locked():
+            msg = "An agent loop is already running for your account. Stop it first."
+            async for line in _stream_text_fake(msg, "error"):
+                yield line
+            _save_history(db, user_id, message, msg)
+            return
+
         logging.info("Routing to agent loop for user %s", user_id)
         yield _yield_line({
             "type": "intent",
@@ -199,8 +213,9 @@ async def run_control_center_chat(user_id: str, message: str, db=None) -> AsyncG
             "skill_id": "RA",
             "skill_status": "training",
         })
-        async for line in run_agent_loop(user_id, message, db=db):
-            yield line
+        async with _agent_locks[user_id]:
+            async for line in run_agent_loop(user_id, message, db=db):
+                yield line
         yield _yield_line({"type": "intent", "skill_id": "RA", "skill_status": "ready"})
         return
 
