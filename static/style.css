@@ -5,7 +5,7 @@
     --bg-sidebar: #F5F4EF;
     --bg-user-bubble: #DDE8FF;
     --bg-assistant-bubble: #FFFFFF;
-    --border-color: #E5E5E5;
+    --border-color: #E8E3D8;
     
     --text-primary: #191919;
     --text-secondary: #595959;
@@ -17,6 +17,16 @@
     --color-warning: #f59e0b;
     --color-danger: #ef4444;
     --color-danger-hover: #dc2626;
+
+    /* Soft pastel border tones */
+    --soft-border-a: rgba(153, 214, 255, 0.55);
+    --soft-border-b: rgba(202, 184, 255, 0.55);
+    --soft-border-c: rgba(255, 211, 185, 0.55);
+    --soft-border-d: rgba(188, 240, 199, 0.55);
+    --soft-border-e: rgba(255, 231, 175, 0.55);
+    --soft-border-f: rgba(244, 194, 255, 0.55);
+    --soft-surface: rgba(255, 255, 255, 0.9);
+    --soft-shadow: 0 16px 38px rgba(148, 163, 184, 0.12);
 
     /* Spacing Scale (4, 8, 12, 16, 24, 32) */
     --space-4: 4px;
@@ -37,7 +47,7 @@
 body {
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     color: var(--text-primary);
-    background-color: var(--bg-page);
+    background: linear-gradient(135deg, #fcfbf7 0%, #f7f7ff 50%, #f7fcff 100%);
     height: 100vh;
     overflow: hidden;
 }
@@ -82,6 +92,53 @@ a:focus {
     background: #C4C1B8;
 }
 
+@keyframes gentleBorderGlow {
+    0% {
+        border-color: var(--soft-border-a);
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.75), 0 12px 30px rgba(125, 211, 252, 0.12), inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+    16.66% {
+        border-color: var(--soft-border-b);
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.75), 0 12px 30px rgba(196, 181, 253, 0.12), inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+    33.33% {
+        border-color: var(--soft-border-c);
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.75), 0 12px 30px rgba(253, 186, 116, 0.12), inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+    50% {
+        border-color: var(--soft-border-d);
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.75), 0 12px 30px rgba(134, 239, 172, 0.12), inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+    66.66% {
+        border-color: var(--soft-border-e);
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.75), 0 12px 30px rgba(250, 204, 21, 0.12), inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+    83.33% {
+        border-color: var(--soft-border-f);
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.75), 0 12px 30px rgba(244, 114, 182, 0.12), inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+    100% {
+        border-color: var(--soft-border-a);
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.75), 0 12px 30px rgba(125, 211, 252, 0.12), inset 0 1px 0 rgba(255,255,255,0.7);
+    }
+}
+
+.auth-card,
+.floating-toolbar,
+.btn-new-chat,
+.project-item,
+.recent-item,
+.agent-logs-panel,
+.save-task-container,
+.input-box,
+.chat-message {
+    border: 1px solid rgba(255, 255, 255, 0.9);
+    border-radius: 20px;
+    background: linear-gradient(135deg, rgba(255,255,255,0.95), rgba(255,255,255,0.82));
+    box-shadow: var(--soft-shadow), inset 0 1px 0 rgba(255,255,255,0.8);
+    animation: gentleBorderGlow 12s ease-in-out infinite;
+}
+
 /* ALERT BOX */
 .alert-box {
     position: fixed;
@@ -95,7 +152,6 @@ a:focus {
     font-weight: 500;
     z-index: 200;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    empty-display: none;
 }
 .alert-box:empty {
     display: none;
