@@ -351,8 +351,90 @@ function toggleAssistantWidget(widgetName, forceOpen) {
 }
 
 
+// --- Xử lý Cold Start cho máy chủ Render (Free Tier) ---
+async function pingBackend() {
+    let isSlow = false;
+    // Nếu sau 1.2s chưa phản hồi, chứng tỏ server đang cold-start (ngủ đông)
+    const slowTimer = setTimeout(() => {
+        isSlow = true;
+        showColdStartBanner();
+    }, 1200);
+
+    try {
+        const res = await fetch(`${API_URL}/health`);
+        if (res.ok) {
+            console.log("❇️ Backend is awake!");
+        }
+    } catch (err) {
+        console.warn("⚠️ Failed to ping backend:", err);
+    } finally {
+        clearTimeout(slowTimer);
+        if (isSlow) {
+            hideColdStartBanner();
+        }
+    }
+}
+
+function showColdStartBanner() {
+    let banner = document.getElementById("coldStartBanner");
+    if (!banner) {
+        banner = document.createElement("div");
+        banner.id = "coldStartBanner";
+        banner.style.position = "fixed";
+        banner.style.bottom = "20px";
+        banner.style.right = "20px";
+        banner.style.padding = "12px 20px";
+        banner.style.background = "linear-gradient(135deg, #fffbeb, #fef3c7)";
+        banner.style.border = "1px solid #fde68a";
+        banner.style.borderRadius = "12px";
+        banner.style.boxShadow = "0 4px 12px rgba(0,0,0,0.05)";
+        banner.style.zIndex = "9999";
+        banner.style.fontFamily = "'Inter', sans-serif";
+        banner.style.fontSize = "13px";
+        banner.style.color = "#b45309";
+        banner.style.display = "flex";
+        banner.style.alignItems = "center";
+        banner.style.gap = "8px";
+        banner.style.animation = "slideIn 0.3s ease-out";
+        
+        banner.innerHTML = `
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style="animation: spin 1.5s linear infinite;">
+                <circle cx="12" cy="12" r="10" stroke="#b45309" stroke-width="3" stroke-dasharray="30 10" fill="none"></circle>
+            </svg>
+            <span>Máy chủ Render đang thức dậy... (khoảng 30-50s)</span>
+        `;
+        
+        if (!document.getElementById("coldStartStyle")) {
+            const style = document.createElement("style");
+            style.id = "coldStartStyle";
+            style.innerHTML = `
+                @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+                @keyframes slideIn { from { transform: translateY(50px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        document.body.appendChild(banner);
+    }
+}
+
+function hideColdStartBanner() {
+    const banner = document.getElementById("coldStartBanner");
+    if (banner) {
+        banner.style.animation = "slideIn 0.3s ease-out reverse";
+        setTimeout(() => {
+            if (banner.parentNode) {
+                banner.parentNode.removeChild(banner);
+            }
+        }, 280);
+    }
+}
+
 // --- App Logic ---
 window.onload = () => {
+    // Đánh thức máy chủ Render
+    pingBackend();
+
     const urlParams = new URLSearchParams(window.location.search);
     const paymentStatus = urlParams.get("payment");
     if (paymentStatus === "success") {
