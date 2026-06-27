@@ -8,7 +8,7 @@ services:
       - key: PYTHON_VERSION
         value: 3.10.13
       - key: FRONTEND_ORIGIN
-        value: "https://application-assistant.vercel.app" # Sửa lại theo link frontend của bạn
+        value: "https://application-assistant.vercel.app"
       - key: MONGO_DB_NAME
         value: "CuongProAI"
       - key: MONGO_URI
@@ -17,3 +17,9 @@ services:
         sync: false
       - key: AGENT_TOKEN
         sync: false
+      - key: VNPAY_TMN_CODE
+        sync: false
+      - key: VNPAY_HASH_SECRET
+        sync: false
+      - key: VNPAY_RETURN_URL
+        value: "https://application-assistant-backend.onrender.com/payment/vnpay_return"
