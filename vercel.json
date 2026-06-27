@@ -6,6 +6,10 @@
   "outputDirectory": "static",
   "rewrites": [
     {
+      "source": "/static/(.*)",
+      "destination": "/$1"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }
