@@ -1,8 +1,8 @@
 import logging
-import json
+import os
 from fastapi import FastAPI
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, Response
+from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import config
@@ -57,26 +57,13 @@ app.include_router(payment_router)
 app.include_router(automation_router)
 app.include_router(router)
 
-@app.get("/static/config.js")
-def frontend_config():
-    api_url = config.PUBLIC_API_URL or ""
-    ws_url = config.PUBLIC_WS_URL or ""
-    payload = (
-        "const isLocal = window.location.hostname === \"localhost\" || "
-        "window.location.hostname === \"127.0.0.1\";\n\n"
-        "window.APP_CONFIG = {\n"
-        f"  API_URL: {json.dumps(api_url)} || window.location.origin,\n"
-        f"  WS_URL: {json.dumps(ws_url)} || "
-        "`${window.location.protocol === \"https:\" ? \"wss\" : \"ws\"}://${window.location.host}/automation/ws`\n"
-        "};\n"
-    )
-    return Response(content=payload, media_type="application/javascript")
+# --- STATIC FILES (chỉ cho local dev, Render không cần serve frontend) ---
+if os.path.isdir("static"):
+    app.mount("/static", StaticFiles(directory="static"), name="static")
 
-app.mount("/static", StaticFiles(directory="static"), name="static")
-
-@app.get("/")
-def read_root():
-    return FileResponse("static/index.html")
+    @app.get("/")
+    def read_root():
+        return FileResponse("static/index.html")
 
 @app.get("/health")
 def health_check():

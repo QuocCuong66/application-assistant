@@ -4,10 +4,15 @@ import os
 
 # --- TỰ ĐỘNG CÀI ĐẶT THƯ VIỆN ---
 def install_dependencies():
-    required = ["websockets", "pyautogui", "pynput", "Pillow", "pyperclip"]
+    required = ["websockets", "pyautogui", "pynput", "Pillow", "pyperclip", "requests", "python-dotenv"]
+    import_names = {
+        "Pillow": "PIL",
+        "python-dotenv": "dotenv",
+    }
     for lib in required:
+        mod = import_names.get(lib, lib.lower())
         try:
-            __import__(lib.lower() if lib != "Pillow" else "PIL")
+            __import__(mod)
         except ImportError:
             print(f"📦 Đang cài đặt thư viện {lib}...")
             subprocess.check_call([sys.executable, "-m", "pip", "install", lib])
@@ -23,13 +28,154 @@ import platform
 import time
 import io
 import base64
+import requests
 from PIL import Image
 from dotenv import load_dotenv
+import getpass
 
 load_dotenv()
 
 # --- CẤU HÌNH ---
 DEFAULT_SERVER = os.getenv("BACKEND_WS_URL", "ws://localhost:8000/automation/ws")
+AGENT_DIR = os.path.dirname(os.path.abspath(__file__))
+SESSION_FILE = os.path.join(AGENT_DIR, "agent_session.json")
+
+# --- QUẢN LÝ SESSION ---
+def _ws_url_to_http(ws_url: str) -> str:
+    """Chuyển ws://host/automation/ws → http://host"""
+    url = ws_url.replace("wss://", "https://").replace("ws://", "http://")
+    # Bỏ path /automation/ws để lấy base URL
+    idx = url.find("/automation/ws")
+    if idx != -1:
+        url = url[:idx]
+    return url
+
+def load_session() -> dict | None:
+    """Đọc session từ file local. Trả về dict hoặc None."""
+    if not os.path.exists(SESSION_FILE):
+        return None
+    try:
+        with open(SESSION_FILE, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        # Kiểm tra các trường bắt buộc
+        if data.get("user_id") and data.get("auth_token"):
+            return data
+    except (json.JSONDecodeError, IOError):
+        pass
+    return None
+
+def save_session(user_id: str, auth_token: str, username: str, server_url: str, autostart: bool = False):
+    """Lưu session vào file local."""
+    data = {
+        "user_id": user_id,
+        "auth_token": auth_token,
+        "username": username,
+        "server_url": server_url,
+        "autostart": autostart
+    }
+    with open(SESSION_FILE, "w", encoding="utf-8") as f:
+        json.dump(data, f, indent=2, ensure_ascii=False)
+    print(f"💾 Đã lưu session cho user '{username}'.")
+
+def delete_session():
+    """Xóa session file khi token hết hạn."""
+    if os.path.exists(SESSION_FILE):
+        os.remove(SESSION_FILE)
+        print("🗑️ Đã xóa session cũ.")
+
+def login_via_api(server_url: str) -> dict | None:
+    """Đăng nhập qua REST API, trả về {user_id, auth_token, username}."""
+    base_url = _ws_url_to_http(server_url)
+    print(f"\n🔐 Đăng nhập vào server: {base_url}")
+    print("─" * 40)
+
+    username = input("   👤 Username: ").strip()
+    password = getpass.getpass("   🔑 Password: ").strip()
+
+    if not username or not password:
+        print("   ❌ Username và password không được để trống!")
+        return None
+
+    # Bước 1: POST /auth/login → lấy token
+    try:
+        resp = requests.post(
+            f"{base_url}/auth/login",
+            json={"username": username, "password": password},
+            timeout=15
+        )
+        if resp.status_code != 200:
+            detail = resp.json().get("detail", resp.text) if resp.headers.get("content-type", "").startswith("application/json") else resp.text
+            print(f"   ❌ Đăng nhập thất bại: {detail}")
+            return None
+        token = resp.json().get("token")
+    except requests.exceptions.ConnectionError:
+        print(f"   ❌ Không thể kết nối tới {base_url}. Server đang offline?")
+        return None
+    except Exception as e:
+        print(f"   ❌ Lỗi đăng nhập: {e}")
+        return None
+
+    # Bước 2: GET /auth/me → lấy user_id
+    try:
+        resp = requests.get(
+            f"{base_url}/auth/me",
+            headers={"X-Token": token},
+            timeout=15
+        )
+        if resp.status_code != 200:
+            print(f"   ❌ Không thể lấy thông tin user: {resp.text}")
+            return None
+        user_data = resp.json()
+        user_id = user_data.get("id")
+    except Exception as e:
+        print(f"   ❌ Lỗi lấy thông tin user: {e}")
+        return None
+
+    print(f"   ✅ Đăng nhập thành công! User: {username} (ID: {user_id[:8]}...)")
+    return {"user_id": user_id, "auth_token": token, "username": username}
+
+# --- AUTO-START WINDOWS ---
+def _get_startup_folder() -> str | None:
+    """Lấy đường dẫn thư mục Startup của Windows."""
+    if platform.system() != "Windows":
+        return None
+    return os.path.join(os.environ.get("APPDATA", ""), 
+                        "Microsoft", "Windows", "Start Menu", "Programs", "Startup")
+
+def setup_autostart():
+    """Tạo file .vbs trong Startup để tự chạy agent khi bật Windows."""
+    startup = _get_startup_folder()
+    if not startup:
+        print("   ⚠️ Auto-start chỉ hỗ trợ Windows.")
+        return False
+    
+    vbs_path = os.path.join(startup, "DesktopAgent.vbs")
+    agent_path = os.path.abspath(__file__)
+    python_path = sys.executable
+    agent_dir = os.path.dirname(agent_path)
+    
+    vbs_content = f'''Set WshShell = CreateObject("WScript.Shell")
+WshShell.CurrentDirectory = "{agent_dir}"
+WshShell.Run """{python_path}"" ""{agent_path}""", 0, False
+'''
+    try:
+        with open(vbs_path, "w", encoding="utf-8") as f:
+            f.write(vbs_content)
+        print(f"   ✅ Đã thiết lập auto-start tại: {vbs_path}")
+        return True
+    except Exception as e:
+        print(f"   ❌ Lỗi tạo auto-start: {e}")
+        return False
+
+def remove_autostart():
+    """Gỡ bỏ auto-start."""
+    startup = _get_startup_folder()
+    if not startup:
+        return
+    vbs_path = os.path.join(startup, "DesktopAgent.vbs")
+    if os.path.exists(vbs_path):
+        os.remove(vbs_path)
+        print("   🗑️ Đã gỡ bỏ auto-start.")
 
 # Biến toàn cục để tắt agent loop
 EMERGENCY_STOP = False
@@ -220,42 +366,79 @@ def handle_tool_call(tool, args):
 
 async def run_agent():
     global EMERGENCY_STOP
-    print("========================================")
-    print("   AI ASSISTANT - DESKTOP AGENT")
-    print("   Hotkey khẩn cấp: Ctrl + Alt + Q để dừng AI")
-    print("   Hotkey khôi phục: Ctrl + Alt + R để reset trạng thái")
-    print("========================================")
+    print("╔══════════════════════════════════════════╗")
+    print("║     AI ASSISTANT - DESKTOP AGENT         ║")
+    print("║  Ctrl+Alt+Q  → Dừng khẩn cấp            ║")
+    print("║  Ctrl+Alt+R  → Khôi phục trạng thái      ║")
+    print("╚══════════════════════════════════════════╝")
     
+    # --- Xác định Server URL ---
     server_url = os.getenv("BACKEND_WS_URL")
     if not server_url:
-        print("⚠️ BACKEND_WS_URL không được cấu hình trong .env.")
-        print("👉 Fallback về mặc định local: ws://localhost:8000/automation/ws")
+        print("\n⚠️  BACKEND_WS_URL chưa cấu hình trong .env.")
+        print("   → Fallback: ws://localhost:8000/automation/ws")
         server_url = "ws://localhost:8000/automation/ws"
     else:
-        print(f"🔗 Sử dụng BACKEND_WS_URL từ .env: {server_url}")
-        
-    user_id = input("Nhập USER ID của bạn (Lấy từ giao diện web): ").strip()
-    while not user_id:
-        user_id = input("Lỗi: Bạn phải nhập USER ID để tiếp tục: ").strip()
+        print(f"\n🌐 Server: {server_url}")
 
-    agent_token = os.getenv("AGENT_TOKEN")
-    if not agent_token:
-        agent_token = input("Nhập AGENT_TOKEN (hoặc thêm vào .env): ").strip()
+    # --- Đăng nhập / Đọc Session ---
+    agent_token = os.getenv("AGENT_TOKEN", "default-secret-token-123")
+    session = load_session()
 
+    if session:
+        user_id = session["user_id"]
+        username = session.get("username", "?")
+        # Dùng server_url từ session nếu .env không có
+        if session.get("server_url"):
+            server_url = session["server_url"]
+        print(f"📂 Session tìm thấy: {username} (ID: {user_id[:8]}...)")
+        print(f"   → Tự động kết nối, không cần đăng nhập lại.")
+    else:
+        print("\n📋 Chưa có session. Cần đăng nhập lần đầu.")
+        while True:
+            credentials = login_via_api(server_url)
+            if credentials:
+                user_id = credentials["user_id"]
+                username = credentials["username"]
+                
+                # Hỏi auto-start (chỉ lần đầu, chỉ Windows)
+                autostart = False
+                if platform.system() == "Windows":
+                    print("\n⚙️  Bạn có muốn agent tự chạy khi bật Windows?")
+                    choice = input("   (y/n, mặc định n): ").strip().lower()
+                    if choice in ("y", "yes"):
+                        autostart = setup_autostart()
+                
+                save_session(user_id, credentials["auth_token"], username, server_url, autostart)
+                break
+            else:
+                print("\n🔄 Thử lại đăng nhập...")
+                retry = input("   Nhấn Enter để thử lại (hoặc gõ 'q' để thoát): ").strip()
+                if retry.lower() == 'q':
+                    print("👋 Đã thoát agent.")
+                    return
+
+    # --- Kết nối WebSocket với Exponential Backoff ---
     uri = f"{server_url}/{user_id}?token={agent_token}"
-    print(f"\n🚀 Đang kết nối tới: {uri}...")
+    backoff = 2  # Bắt đầu 2 giây
+    max_backoff = 60
+    retry_count = 0
+
+    print(f"\n🚀 Đang kết nối tới server...")
     
     while True:
         try:
-            async with websockets.connect(uri, max_size=20_000_000) as websocket: # 20MB limit for screenshots
+            async with websockets.connect(uri, max_size=20_000_000) as websocket:
+                # Kết nối thành công → reset backoff
+                backoff = 2
+                retry_count = 0
                 print("✅ Đã kết nối thành công! Agent đang lắng nghe lệnh từ Web...")
                 
                 while True:
-                    # Reset emergency stop state upon reconnect/loop start
+                    # Kiểm tra Emergency Stop
                     if EMERGENCY_STOP:
-                        print("⏸️ Vẫn đang ở trạng thái dừng khẩn cấp. Không xử lý lệnh.")
+                        print("⏸️ Đang dừng khẩn cấp. Nhấn Ctrl+Alt+R để tiếp tục.")
                         await asyncio.sleep(1)
-                        # Đợi đến khi có cơ chế reset, ở demo này tạm thời break
                         continue
                         
                     message = await websocket.recv()
@@ -362,12 +545,47 @@ async def run_agent():
                         except Exception as e:
                             print(f"❌ Lỗi thực thi: {e}")
 
+        except websockets.exceptions.InvalidStatusCode as e:
+            if hasattr(e, 'status_code') and e.status_code == 4001:
+                # Token không hợp lệ hoặc hết hạn → xóa session, đăng nhập lại
+                print("\n🔒 Token không hợp lệ hoặc đã hết hạn!")
+                delete_session()
+                print("   Cần đăng nhập lại.")
+                while True:
+                    credentials = login_via_api(server_url)
+                    if credentials:
+                        user_id = credentials["user_id"]
+                        save_session(user_id, credentials["auth_token"], credentials["username"], server_url)
+                        uri = f"{server_url}/{user_id}?token={agent_token}"
+                        print("🔄 Đang kết nối lại...")
+                        break
+                    else:
+                        retry = input("   Nhấn Enter để thử lại (hoặc 'q' để thoát): ").strip()
+                        if retry.lower() == 'q':
+                            return
+            else:
+                retry_count += 1
+                print(f"❌ Lỗi kết nối (lần {retry_count}). Thử lại sau {backoff}s...")
+                await asyncio.sleep(backoff)
+                backoff = min(backoff * 2, max_backoff)
+
         except websockets.exceptions.ConnectionClosedError:
-             print("❌ Mất kết nối WebSockets. Đang thử lại sau 5 giây...")
-             await asyncio.sleep(5)
+            retry_count += 1
+            print(f"❌ Mất kết nối WebSocket (lần {retry_count}). Thử lại sau {backoff}s...")
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, max_backoff)
+
+        except ConnectionRefusedError:
+            retry_count += 1
+            print(f"❌ Server từ chối kết nối (lần {retry_count}). Thử lại sau {backoff}s...")
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, max_backoff)
+
         except Exception as e:
-            print(f"❌ Lỗi: {e}. Đang thử lại sau 5 giây...")
-            await asyncio.sleep(5)
+            retry_count += 1
+            print(f"❌ Lỗi: {e} (lần {retry_count}). Thử lại sau {backoff}s...")
+            await asyncio.sleep(backoff)
+            backoff = min(backoff * 2, max_backoff)
 
 if __name__ == "__main__":
     pyautogui.FAILSAFE = True
@@ -375,4 +593,3 @@ if __name__ == "__main__":
         asyncio.run(run_agent())
     except KeyboardInterrupt:
         print("\n👋 Đã đóng Agent.")
-

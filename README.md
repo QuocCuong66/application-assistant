@@ -55,43 +55,50 @@ Backend FastAPI sẽ chạy độc lập và xử lý WebSockets. Không deploy 
 
 ## B. Hướng dẫn Deploy Frontend lên Vercel
 
-Giao diện Web sẽ được tách riêng ra và host trên Vercel.
+Giao diện Web được tách riêng ra và host trên Vercel dưới dạng trang tĩnh tốc độ cao.
 
-1. Đăng nhập [Vercel.com](https://vercel.com).
+1. Đăng nhập [Vercel.com](https://vercel.app).
 2. Chọn **Add New Project**, kết nối GitHub và import repository này.
 3. Trong phần cấu hình Project Vercel:
-   - **Root Directory**: GIỮ NGUYÊN (Không đổi thành static). File `vercel.json` ở thư mục gốc sẽ tự động lo việc routing `static/` thành trang chính.
-   - Bấm **Deploy**.
-4. Cấu hình API URL cho Production:
-   - Sửa nội dung file `static/config.js` trước khi push code lên GitHub (Hoặc sửa trực tiếp trên nhánh main nếu muốn):
+   - **Framework Preset**: Chọn `Other`
+   - **Root Directory**: Giữ nguyên thư mục gốc (không chọn `static`). File [vercel.json](file:///d:/application-assistant/vercel.json) đã được cấu hình trỏ `outputDirectory: "static"` để Vercel tự động build và phục vụ trực tiếp các file tĩnh từ thư mục `static/` làm root của trang web.
+4. Sửa cấu hình API URL cho môi trường chạy thật trước khi push code (hoặc cập nhật trực tiếp):
+   - Chỉnh sửa file [static/config.js](file:///d:/application-assistant/static/config.js):
    ```javascript
    window.APP_CONFIG = {
-     API_URL: "https://my-backend.onrender.com", // Đổi thành URL Render của bạn
-     WS_URL: "wss://my-backend.onrender.com/automation/ws"
+     API_URL: "https://tên-dịch-vụ-của-bạn.onrender.com", // Đổi thành URL Render của bạn
+     WS_URL: "wss://tên-dịch-vụ-của-bạn.onrender.com/automation/ws"
    };
    ```
-
-*Truy cập trực tiếp URL Vercel của bạn để dùng giao diện Web.*
+5. Bấm **Deploy**. Truy cập URL của Vercel để sử dụng ứng dụng.
 
 ---
 
-## C. Hướng dẫn chạy Desktop Agent local
+## C. Hướng dẫn chạy Desktop Agent Local (Điều khiển máy tính)
 
-Lưu ý: `desktop_agent.py` **không** deploy lên Render hay Vercel. File này CHỈ chạy trên máy tính mà bạn muốn điều khiển.
+Lưu ý: `desktop_agent.py` **không** deploy lên Render hay Vercel. File này CHỈ chạy trên máy tính mà bạn muốn điều khiển. 
 
+Hiện tại Desktop Agent đã được tích hợp các tính năng tự động hóa mạnh mẽ:
+* **Tự động Đăng nhập & Lưu Session**: Không cần lấy hay copy USER ID thủ công nữa. Agent sẽ hiển thị prompt đăng nhập bằng chính tài khoản ứng dụng Web của bạn, sau đó tự lưu session an toàn vào file local `agent_session.json` (được tự động bỏ qua khi push git). Các lần khởi chạy tiếp theo sẽ tự động kết nối ngay lập tức mà không cần tương tác.
+* **Tự khởi chạy cùng Windows (Auto-start)**: Trong lần chạy đầu tiên, Agent sẽ hỏi xem bạn có muốn tự khởi động cùng máy tính không. Nếu đồng ý, nó sẽ tự cài đặt shortcut VBS ẩn dưới nền.
+* **Exponential Backoff Reconnect**: Tự động thử kết nối lại với thời gian tăng dần (2s -> 4s -> ... -> 60s) nếu server bị ngắt kết nối đột ngột hoặc mạng yếu.
+
+### Cách chạy:
 1. Kích hoạt môi trường ảo: `.\.venv\Scripts\Activate.ps1`
 2. Cấu hình file `.env` ở local (cùng thư mục với `desktop_agent.py`):
    ```env
-   BACKEND_WS_URL="wss://my-backend.onrender.com/automation/ws"
-   AGENT_TOKEN="my-super-secret-token" # Giống hệt token cài trên Render
+   BACKEND_WS_URL="wss://tên-dịch-vụ-của-bạn.onrender.com/automation/ws"
+   AGENT_TOKEN="my-super-secret-token" # Trùng khớp với AGENT_TOKEN đã cấu hình trên Render
    ```
-3. Chạy lệnh:
+3. Chạy lệnh khởi động:
    ```powershell
    python desktop_agent.py
    ```
-4. Tool sẽ tự đọc link Server. Bạn chỉ cần nhập **USER ID** (Lấy từ giao diện web, góc dưới màn hình "ID: 69ff...").
+4. Đăng nhập bằng tài khoản và mật khẩu của bạn (đã đăng ký trên giao diện Web).
+5. Khi màn hình hiện `✅ Đã kết nối thành công!`, thiết bị của bạn đã sẵn sàng nhận lệnh từ Web.
 
-Khi màn hình hiện `✅ Đã kết nối thành công!`, bạn có thể lên giao diện Web (Vercel) và ra lệnh cho AI điều khiển máy tính.
+---
 
-BACKEND_URL=https://application-assistant-backend.onrender.com
-server local : http://127.0.0.1:8000
+## D. Thông tin URL tham chiếu
+- **Backend URL Mặc định**: `https://application-assistant-backend.onrender.com`
+- **Server Local (Development)**: `http://127.0.0.1:8000`

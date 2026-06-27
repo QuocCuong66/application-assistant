@@ -1,2 +1,27 @@
-
 .env
+agent_session.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+ENV/
+env/
+build/
+dist/
+*.db
+server_log.txt
+stderr.txt
+stdout.txt
+test_results.txt
+
+# Node / Frontend
+node_modules/
+.vercel/
+package-lock.json
+
+# OS files
+.DS_Store
+Thumbs.db
