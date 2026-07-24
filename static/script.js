@@ -352,6 +352,12 @@ function toggleAssistantWidget(widgetName, forceOpen) {
 
 
 // --- Xử lý Cold Start cho máy chủ Render (Free Tier) ---
+// Render free tier spins down after 15 min of inactivity.
+// We ping /health every 5 minutes to keep it warm.
+
+const KEEP_ALIVE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes
+let keepAliveTimer = null;
+
 async function pingBackend() {
     let isSlow = false;
     // Nếu sau 1.2s chưa phản hồi, chứng tỏ server đang cold-start (ngủ đông)
@@ -374,6 +380,37 @@ async function pingBackend() {
         }
     }
 }
+
+/** Start recurring keep-alive pings to Render backend */
+function startKeepAlive() {
+    stopKeepAlive(); // Prevent duplicate timers
+    keepAliveTimer = setInterval(() => {
+        fetch(`${API_URL}/health`).catch(() => {});
+        console.log("🏓 Keep-alive ping sent to Render backend");
+    }, KEEP_ALIVE_INTERVAL_MS);
+    console.log(`🟢 Keep-alive started (every ${KEEP_ALIVE_INTERVAL_MS / 1000}s)`);
+}
+
+/** Stop recurring keep-alive pings (e.g., when tab is hidden) */
+function stopKeepAlive() {
+    if (keepAliveTimer) {
+        clearInterval(keepAliveTimer);
+        keepAliveTimer = null;
+        console.log("🔴 Keep-alive stopped");
+    }
+}
+
+// Pause keep-alive when user hides tab (saves battery/data),
+// resume when they come back.
+document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+        // Tab is active again — send an immediate ping + restart the interval
+        pingBackend();
+        startKeepAlive();
+    } else {
+        stopKeepAlive();
+    }
+});
 
 function showColdStartBanner() {
     let banner = document.getElementById("coldStartBanner");
@@ -432,8 +469,9 @@ function hideColdStartBanner() {
 
 // --- App Logic ---
 window.onload = () => {
-    // Đánh thức máy chủ Render
+    // Đánh thức máy chủ Render + bắt đầu keep-alive định kỳ
     pingBackend();
+    startKeepAlive();
 
     const urlParams = new URLSearchParams(window.location.search);
     const paymentStatus = urlParams.get("payment");
