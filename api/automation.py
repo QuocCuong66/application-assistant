@@ -4,7 +4,7 @@ import json
 import os
 import logging
 from typing import Dict
-from datetime import datetime
+from datetime import datetime, timezone
 from bson import ObjectId
 import uuid
 import asyncio
@@ -123,7 +123,7 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = No
                         "user_id": user_id,
                         "name": data.get("task_name", "Untitled Task"),
                         "actions_json": json.dumps(data.get("actions", [])),
-                        "created_at": datetime.utcnow()
+                        "created_at": datetime.now(timezone.utc)
                     }
                     db.trained_tasks.insert_one(task_doc)
                     logging.info(f"Task '{task_doc['name']}' saved successfully for user {user_id}.")

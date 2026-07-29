@@ -58,7 +58,7 @@ def _save_history(db, user_id: str, message: str, response: str) -> None:
         "user_id": user_id,
         "message": message,
         "response": response,
-        "timestamp": datetime.datetime.utcnow(),
+        "timestamp": datetime.datetime.now(datetime.timezone.utc),
     })
 
 

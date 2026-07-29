@@ -29,7 +29,7 @@ def create_payment_url(
         "order_id": order_id,
         "amount": request.amount,
         "status": "PENDING",
-        "created_at": datetime.datetime.utcnow()
+        "created_at": datetime.datetime.now(datetime.timezone.utc)
     }
     transactions = db.transactions
     result = transactions.insert_one(transaction_doc)

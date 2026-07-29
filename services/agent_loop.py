@@ -187,7 +187,7 @@ def save_agent_history(db, user_id: str, goal: str, response: str):
         "user_id": user_id,
         "message": goal,
         "response": response,
-        "timestamp": datetime.datetime.utcnow(),
+        "timestamp": datetime.datetime.now(datetime.timezone.utc),
     })
 
 

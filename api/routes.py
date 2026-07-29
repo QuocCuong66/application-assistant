@@ -110,7 +110,7 @@ async def chat_endpoint(
         "user_id": current_user["id"],
         "message": user_message,
         "response": ai_response,
-        "timestamp": datetime.datetime.utcnow()
+        "timestamp": datetime.datetime.now(datetime.timezone.utc)
     }
     db.message_history.insert_one(chat_history)
 
@@ -178,7 +178,7 @@ def get_history(
         history_list.append(HistoryItem(
             message=doc.get("message", ""),
             response=doc.get("response", ""),
-            timestamp=doc.get("timestamp", datetime.datetime.utcnow())
+            timestamp=doc.get("timestamp", datetime.datetime.now(datetime.timezone.utc))
         ))
 
     return history_list

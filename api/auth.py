@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 import bcrypt
 import uuid
 from bson import ObjectId
-from datetime import datetime
+from datetime import datetime, timezone
 
 from database import get_db
 from schemas import AuthRequest, TokenResponse, UserResponse
@@ -34,7 +34,7 @@ def register(request: AuthRequest, db: dict = Depends(get_db)):
         "password": hashed_password,
         "token": None,
         "is_pro": False,
-        "created_at": datetime.utcnow()
+        "created_at": datetime.now(timezone.utc)
     }
     result = users.insert_one(user_doc)
     # We don't need to return the user object, just a success message
