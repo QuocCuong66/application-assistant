@@ -32,6 +32,7 @@ frontend_origin = config.FRONTEND_ORIGIN.rstrip("/") if config.FRONTEND_ORIGIN e
 origins = [
     frontend_origin,
     "https://application-assistant.vercel.app",
+    "https://application-assistant-git-main-quoccuong66.vercel.app",
     "http://localhost",
     "http://localhost:3000",
     "http://localhost:5173",
@@ -43,13 +44,14 @@ origins = [
 
 origins = [origin for origin in dict.fromkeys(origins) if origin]
 
-# Regex hỗ trợ Localhost, 127.0.0.1 và TẤT CẢ domain/preview Vercel (*.vercel.app)
-origin_regex = r"^(https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.vercel\.app)$"
+# Cho phép TẤT CẢ mọi origin (cho phép test/dev thoải mái mà không bị chặn CORS)
+# regex r".*" sẽ tự động khớp mọi tên miền và trả về Access-Control-Allow-Origin tương ứng
+origin_regex = r".*"
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
-    allow_origin_regex=origin_regex,
+    allow_origin_regex=origin_regex, # Cho phép tất cả các origin truy cập (bao gồm cả credentials)
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
