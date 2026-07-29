@@ -27,27 +27,32 @@ app = FastAPI(
 )
 
 # --- CẤU HÌNH CORS TẠI ĐÂY ---
+frontend_origin = config.FRONTEND_ORIGIN.rstrip("/") if config.FRONTEND_ORIGIN else ""
+
 origins = [
-    config.FRONTEND_ORIGIN,
+    frontend_origin,
+    "https://application-assistant.vercel.app",
     "http://localhost",
     "http://localhost:3000",
     "http://localhost:5173",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
-    "http://127.0.0.1:5500",   # <-- THÊM DÒNG NÀY (Địa chỉ IP của Live Server)
-    "http://localhost:5500",   # <-- THÊM DÒNG NÀY (Địa chỉ localhost của Live Server)
+    "http://127.0.0.1:5500",
+    "http://localhost:5500",
 ]
 
 origins = [origin for origin in dict.fromkeys(origins) if origin]
-local_origin_regex = r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$"
+
+# Regex hỗ trợ Localhost, 127.0.0.1 và TẤT CẢ domain/preview Vercel (*.vercel.app)
+origin_regex = r"^(https?://(localhost|127\.0\.0\.1)(:\d+)?|https://.*\.vercel\.app)$"
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,            # Cho phép các nguồn này truy cập
-    allow_origin_regex=local_origin_regex,
+    allow_origins=origins,
+    allow_origin_regex=origin_regex,
     allow_credentials=True,
-    allow_methods=["*"],               # Cho phép tất cả các phương thức (GET, POST, OPTIONS...)
-    allow_headers=["*"],               # Cho phép tất cả các headers
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 # ------------------------------
 

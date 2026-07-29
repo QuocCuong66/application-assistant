@@ -510,6 +510,7 @@ function setAvatarState(state) {
 function updateStatusUI(isPro) {
     const statusEl = document.getElementById("userStatus");
     const upgradeBtn = document.querySelector(".btn-pro");
+    if (!statusEl) return;
     if (isPro) {
         statusEl.innerText = "Pro Account";
         statusEl.className = "status-pro";
@@ -559,11 +560,12 @@ async function login() {
 function logout() {
     localStorage.removeItem("token");
     token = null;
-    document.getElementById("authSection").classList.remove("hidden");
-    document.getElementById("appSection").classList.add("hidden");
-    document.getElementById("trainingSection").classList.add("hidden");
+    document.getElementById("authSection")?.classList.remove("hidden");
+    document.getElementById("appSection")?.classList.add("hidden");
+    document.getElementById("trainingSection")?.classList.add("hidden");
     document.getElementById("downloadAgentBanner")?.classList.add("hidden");
-    document.getElementById("chatBox").innerHTML = "";
+    const chatBox = document.getElementById("chatBox");
+    if (chatBox) chatBox.innerHTML = "";
     toggleAssistantWidget("chat", false);
     toggleAssistantWidget("skill", false);
     updateStatusUI(false);
@@ -607,9 +609,9 @@ function dismissDownloadAgentBanner() {
 }
 
 async function showApp() {
-    document.getElementById("authSection").classList.add("hidden");
-    document.getElementById("appSection").classList.remove("hidden");
-    document.getElementById("trainingSection").classList.remove("hidden");
+    document.getElementById("authSection")?.classList.add("hidden");
+    document.getElementById("appSection")?.classList.remove("hidden");
+    document.getElementById("trainingSection")?.classList.remove("hidden");
     toggleAssistantWidget("chat", true);
     toggleAssistantWidget("skill", false);
 
@@ -618,7 +620,8 @@ async function showApp() {
     });
     if (res.status === 200) {
         const data = await res.json();
-        document.getElementById("userIdDisplay").innerText = data.id;
+        const userDisplay = document.getElementById("userIdDisplay");
+        if (userDisplay) userDisplay.innerText = data.id;
         updateStatusUI(data.is_pro);
         checkDownloadAgentBanner(data.id);
     } else if (res.status === 401) {
