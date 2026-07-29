@@ -562,10 +562,48 @@ function logout() {
     document.getElementById("authSection").classList.remove("hidden");
     document.getElementById("appSection").classList.add("hidden");
     document.getElementById("trainingSection").classList.add("hidden");
+    document.getElementById("downloadAgentBanner")?.classList.add("hidden");
     document.getElementById("chatBox").innerHTML = "";
     toggleAssistantWidget("chat", false);
     toggleAssistantWidget("skill", false);
     updateStatusUI(false);
+}
+
+function checkDownloadAgentBanner(userId) {
+    if (!userId) return;
+    const downloaded = localStorage.getItem(`agent_downloaded_${userId}`);
+    const banner = document.getElementById("downloadAgentBanner");
+    if (!banner) return;
+
+    if (downloaded === "true") {
+        banner.classList.add("hidden");
+    } else {
+        banner.classList.remove("hidden");
+    }
+}
+
+function downloadDesktopAgent() {
+    const userId = document.getElementById("userIdDisplay")?.innerText;
+    if (userId) {
+        localStorage.setItem(`agent_downloaded_${userId}`, "true");
+    }
+    const banner = document.getElementById("downloadAgentBanner");
+    if (banner) {
+        banner.classList.add("hidden");
+    }
+    showAlert("Starting Desktop Agent download...");
+    window.location.href = `${API_URL}/automation/download_agent`;
+}
+
+function dismissDownloadAgentBanner() {
+    const userId = document.getElementById("userIdDisplay")?.innerText;
+    if (userId) {
+        localStorage.setItem(`agent_downloaded_${userId}`, "true");
+    }
+    const banner = document.getElementById("downloadAgentBanner");
+    if (banner) {
+        banner.classList.add("hidden");
+    }
 }
 
 async function showApp() {
@@ -582,6 +620,7 @@ async function showApp() {
         const data = await res.json();
         document.getElementById("userIdDisplay").innerText = data.id;
         updateStatusUI(data.is_pro);
+        checkDownloadAgentBanner(data.id);
     } else if (res.status === 401) {
         logout();
         return;

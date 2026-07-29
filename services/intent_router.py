@@ -55,6 +55,8 @@ def skill_id_for_tool(tool: str, intent: str = "") -> str:
     return mapping.get(tool, "DC")
 
 
+import urllib.parse
+
 def _open_app_intent(message: str) -> Optional[Tuple[str, float, Dict[str, Any]]]:
     apps: List[Tuple[str, str, float]] = [
         (r"(google\s+)?chrome|trình duyệt chrome|browser chrome", "chrome", 0.92),
@@ -62,7 +64,14 @@ def _open_app_intent(message: str) -> Optional[Tuple[str, float, Dict[str, Any]]
         (r"firefox", "firefox", 0.9),
         (r"notepad|ghi chú", "notepad", 0.9),
         (r"calculator|máy tính(?!\s+tính)", "calc", 0.88),
-        (r"explorer|file explorer|thư mục", "explorer", 0.85),
+        (r"explorer|file explorer|thư mục|folder", "explorer", 0.85),
+        (r"cmd|command prompt|trình điều khiển cmd", "cmd", 0.88),
+        (r"powershell", "powershell", 0.88),
+        (r"vscode|vs code|visual studio code", "vscode", 0.9),
+        (r"word|microsoft word", "word", 0.88),
+        (r"excel|microsoft excel", "excel", 0.88),
+        (r"zalo", "zalo", 0.9),
+        (r"spotify", "spotify", 0.88),
     ]
     open_verbs = r"(open|launch|start|run|m[oở]|khởi chạy|help me open|can you open|please open)"
     for pattern, app_name, conf in apps:
@@ -192,20 +201,21 @@ def detect_intent(message: str) -> Dict[str, Any]:
         }
 
     # --- web search ---
-    if re.search(r"(search web|google search|tìm trên web|tim tren web|search for)", text, re.I):
-        query_match = re.search(r"(?:search for|tìm|tim)\s+(.+)", raw, re.I)
-        query = query_match.group(1).strip() if query_match else ""
+    if re.search(r"(search web|google search|tìm trên web|tim tren web|search for|tìm kiếm)", text, re.I):
+        query_match = re.search(r"(?:search for|search web for|google search|tìm kiếm|tìm trên web|tim tren web|tìm|tim)\s+(.+)", raw, re.I)
+        query = query_match.group(1).strip() if query_match else raw
+        search_url = f"https://www.google.com/search?q={urllib.parse.quote(query)}"
         return {
             "intent": "search_web",
-            "confidence": 0.8,
+            "confidence": 0.85,
             "skill_id": "WA",
             "action": {
                 "type": "desktop_action",
                 "tool": "open_app",
-                "args": {"app_name": "chrome"},
+                "args": {"app_name": "chrome", "url": search_url, "query": query},
                 "requires_confirmation": True,
                 "skill_id": "WA",
-                "label": "web search",
+                "label": f"Web search '{query}'",
                 "user_message": raw,
                 "search_query": query,
             },
@@ -230,12 +240,16 @@ def detect_intent(message: str) -> Dict[str, Any]:
 def confirmation_prompt(action: Dict[str, Any]) -> str:
     tool = action.get("tool")
     label = action.get("label") or tool
+    args = action.get("args") or {}
+
     if tool == "open_app":
-        app = action.get("args", {}).get("app_name", "the app")
+        app = args.get("app_name", "the app")
         name = "Google Chrome" if app == "chrome" else str(app).title()
+        if args.get("query"):
+            return f"I can search Google for '{args['query']}' in {name}. Do you want me to run it now?"
         return f"I can open {name} for you. Do you want me to run it now?"
     if tool == "screenshot":
-        return "I can capture a screenshot for you. Do you want me to run it now?"
+        return "I can capture a screenshot and analyze it for you. Do you want me to run it now?"
     if tool == "scroll":
         return "I can scroll the active window for you. Do you want me to run it now?"
     if tool == "type_text":
@@ -247,12 +261,16 @@ def confirmation_prompt(action: Dict[str, Any]) -> str:
 
 def execution_message(action: Dict[str, Any]) -> str:
     tool = action.get("tool")
+    args = action.get("args") or {}
+
     if tool == "open_app":
-        app = action.get("args", {}).get("app_name", "app")
+        app = args.get("app_name", "app")
         name = "Google Chrome" if app == "chrome" else str(app).title()
+        if args.get("query"):
+            return f"Searching Google for '{args['query']}' in {name}…"
         return f"Opening {name} now…"
     if tool == "screenshot":
-        return "Capturing a screenshot now…"
+        return "Capturing screenshot and analyzing screen…"
     if tool == "scroll":
         return "Scrolling now…"
     if tool == "type_text":
@@ -265,3 +283,4 @@ def execution_message(action: Dict[str, Any]) -> str:
 AGENT_OFFLINE_MESSAGE = (
     "Desktop Agent is not connected. Please start desktop_agent.py, then I can run this for you."
 )
+

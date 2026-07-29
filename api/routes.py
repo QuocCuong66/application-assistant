@@ -248,3 +248,30 @@ def refresh_mongo_data(
         "status": "no_refresh_needed",
         "message": "MongoDB is the primary storage. No refresh from SQLite needed."
     }
+
+
+@router.post("/voice/transcribe")
+async def transcribe_voice(
+    file: UploadFile = File(...),
+    current_user: dict = Depends(get_current_user)
+):
+    """Transcribes an uploaded audio file using OpenAI Whisper API (VC Skill)."""
+    try:
+        from voice.listener import Listener
+        suffix = os.path.splitext(file.filename)[1] or ".mp3"
+        with tempfile.NamedTemporaryFile(delete=False, suffix=suffix) as tmp:
+            content = await file.read()
+            tmp.write(content)
+            tmp_path = tmp.name
+
+        listener = Listener()
+        text = listener.transcribe_audio_file(tmp_path)
+        
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
+            
+        return {"text": text}
+    except Exception as e:
+        logging.error(f"Error in /voice/transcribe: {e}")
+        raise HTTPException(status_code=500, detail=f"Audio transcription error: {str(e)}")
+

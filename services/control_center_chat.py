@@ -73,6 +73,59 @@ def _should_use_agent_loop(message: str, intent_result: Dict[str, Any]) -> bool:
     return False
 
 
+async def _analyze_screenshot_with_vision(base64_data: str, user_prompt: str) -> str:
+    """Analyze a captured desktop screenshot using Gemini 2.5 Flash Vision or OpenAI Vision."""
+    try:
+        from config import GEMINI_API_KEY, GEMINI_MODEL, OPENAI_API_KEY, OPENAI_VISION_MODEL
+        from openai import OpenAI
+
+        if GEMINI_API_KEY:
+            client = OpenAI(
+                api_key=GEMINI_API_KEY,
+                base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+            )
+            model_name = GEMINI_MODEL or "gemini-2.5-flash"
+        else:
+            client = brain.client
+            model_name = OPENAI_VISION_MODEL or "gpt-4o"
+
+        logging.info(f"Analyzing screenshot using Vision model '{model_name}'...")
+
+        messages = [
+            {
+                "role": "system",
+                "content": (
+                    "You are an expert AI assistant analyzing a desktop screenshot for the user. "
+                    "Provide a helpful, structured analysis in the user's language (e.g. Vietnamese if prompt is in Vietnamese). "
+                    "Keep it concise (3-5 sentences) unless a detailed breakdown is requested."
+                ),
+            },
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": f"User question/request: {user_prompt}"},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:image/png;base64,{base64_data}",
+                            "detail": "high",
+                        },
+                    },
+                ],
+            },
+        ]
+        response = await asyncio.to_thread(
+            client.chat.completions.create,
+            model=model_name,
+            messages=messages,
+            max_tokens=600,
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        logging.error("Error analyzing screenshot with Vision API: %s", e)
+        return f"Capturing screenshot succeeded, but AI vision analysis encountered an error: {e}"
+
+
 async def _handle_desktop_intent(
     user_id: str,
     message: str,
@@ -124,7 +177,17 @@ async def _handle_desktop_intent(
     yield _yield_line({"type": "intent", "skill_id": skill_id, "skill_status": "training"})
     yield _yield_line({"type": "state", "state": "acting", "message": "Task queued…"})
     result = await execute_desktop_action(user_id, action)
-    final = execution_message(action) if result.get("success") else AGENT_OFFLINE_MESSAGE
+
+    if result.get("success"):
+        if tool == "screenshot" and result.get("result", {}).get("data"):
+            base64_img = result["result"]["data"]
+            analysis = await _analyze_screenshot_with_vision(base64_img, message)
+            final = f"📸 **Phân tích màn hình:**\n\n{analysis}"
+        else:
+            final = execution_message(action)
+    else:
+        final = AGENT_OFFLINE_MESSAGE
+
     logging.info("Task queued for %s: success=%s", user_id, result.get("success"))
     async for line in _stream_text_fake(final):
         yield line
@@ -173,7 +236,13 @@ async def run_control_center_chat(user_id: str, message: str, db=None) -> AsyncG
             yield _yield_line({"type": "state", "state": "acting", "message": "Sending task to Desktop Agent…"})
             result = await execute_desktop_action(user_id, action)
             if result.get("success"):
-                final = execution_message(action)
+                if action.get("tool") == "screenshot" and result.get("result", {}).get("data"):
+                    base64_img = result["result"]["data"]
+                    user_req = action.get("user_message", message)
+                    analysis = await _analyze_screenshot_with_vision(base64_img, user_req)
+                    final = f"📸 **Phân tích màn hình:**\n\n{analysis}"
+                else:
+                    final = execution_message(action)
                 logging.info("Task executed for user %s: %s", user_id, action.get("tool"))
             else:
                 err = result.get("error", "unknown")
@@ -183,6 +252,47 @@ async def run_control_center_chat(user_id: str, message: str, db=None) -> AsyncG
                 yield line
             yield _yield_line({"type": "intent", "skill_id": skill_id, "skill_status": "ready"})
             _save_history(db, user_id, message, final)
+            return
+
+    # Check trained skills in MongoDB (Auto Skill AT)
+    if db:
+        from agent.planner import Planner
+        planner = Planner()
+        matched_task = planner.match_trained_task(message, db, user_id)
+        if matched_task:
+            task_name = matched_task.get("name", "Trained Skill")
+            actions_str = matched_task.get("actions_json", "[]")
+            try:
+                actions = json.loads(actions_str) if isinstance(actions_str, str) else actions_str
+            except Exception:
+                actions = []
+
+            yield _yield_line({
+                "type": "intent",
+                "intent": "trained_task",
+                "skill_id": "AT",
+                "skill_status": "training",
+                "confidence": 1.0,
+            })
+
+            if not ws_manager.is_connected(user_id):
+                async for line in _stream_text_fake(AGENT_OFFLINE_MESSAGE, "error"):
+                    yield line
+                yield _yield_line({"type": "intent", "skill_id": "AT", "skill_status": "ready"})
+                _save_history(db, user_id, message, AGENT_OFFLINE_MESSAGE)
+                return
+
+            yield _yield_line({"type": "state", "state": "acting", "message": f"Executing skill '{task_name}'…"})
+            sent = await ws_manager.send_command(user_id, {
+                "type": "execution",
+                "task_name": task_name,
+                "actions": actions
+            })
+            reply = f"Đã gửi lệnh thực thi skill '{task_name}' xuống máy tính của bạn." if sent else AGENT_OFFLINE_MESSAGE
+            async for line in _stream_text_fake(reply):
+                yield line
+            yield _yield_line({"type": "intent", "skill_id": "AT", "skill_status": "ready"})
+            _save_history(db, user_id, message, reply)
             return
 
     intent_result = detect_intent(message)
@@ -221,8 +331,23 @@ async def run_control_center_chat(user_id: str, message: str, db=None) -> AsyncG
 
     logging.info("Fallback chat for user %s (confidence=%.2f)", user_id, confidence)
     yield _yield_line({"type": "intent", "skill_id": "AT", "skill_status": "active"})
+
+    # Fetch recent conversation history context for Task Memory (TM skill)
+    history_msgs = []
+    if db:
+        try:
+            recent_docs = list(db.message_history.find({"user_id": user_id}).sort("timestamp", -1).limit(6))
+            recent_docs.reverse()
+            for doc in recent_docs:
+                if doc.get("message"):
+                    history_msgs.append({"role": "user", "content": doc["message"]})
+                if doc.get("response"):
+                    history_msgs.append({"role": "assistant", "content": doc["response"]})
+        except Exception as e:
+            logging.warning("Failed to fetch chat history context: %s", e)
+
     try:
-        reply = await asyncio.to_thread(brain.process_message, message, CONTROL_SYSTEM)
+        reply = await asyncio.to_thread(brain.process_message, message, CONTROL_SYSTEM, history_msgs)
     except Exception as e:
         logging.error("Brain error: %s", e)
         reply = "Sorry, I could not process that request right now."
@@ -251,9 +376,17 @@ async def execute_pending_for_user(user_id: str) -> Dict[str, Any]:
     action = clear_pending(user_id)
     result = await execute_desktop_action(user_id, action)
     if result.get("success"):
+        tool = action.get("tool")
+        if tool == "screenshot" and result.get("result", {}).get("data"):
+            base64_img = result["result"]["data"]
+            user_req = action.get("user_message", "chụp màn hình")
+            analysis = await _analyze_screenshot_with_vision(base64_img, user_req)
+            msg = f"📸 **Phân tích màn hình:**\n\n{analysis}"
+        else:
+            msg = execution_message(action)
         return {
             "executed": True,
-            "message": execution_message(action),
+            "message": msg,
             "skill_id": skill_id,
             "skill_status": "ready",
         }
@@ -263,3 +396,4 @@ async def execute_pending_for_user(user_id: str) -> Dict[str, Any]:
         "skill_id": skill_id,
         "skill_status": "ready",
     }
+

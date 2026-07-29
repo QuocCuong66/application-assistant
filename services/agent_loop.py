@@ -370,9 +370,20 @@ async def run_agent_loop(user_id: str, goal: str, db=None):
         ]
 
         try:
+            from config import GEMINI_API_KEY, GEMINI_MODEL
+            if GEMINI_API_KEY:
+                loop_client = OpenAI(
+                    api_key=GEMINI_API_KEY,
+                    base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+                )
+                loop_model = GEMINI_MODEL or "gemini-2.5-flash"
+            else:
+                loop_client = client
+                loop_model = OPENAI_VISION_MODEL or "gpt-4o"
+
             response = await asyncio.to_thread(
-                client.chat.completions.create,
-                model=OPENAI_VISION_MODEL,
+                loop_client.chat.completions.create,
+                model=loop_model,
                 messages=messages,
                 max_tokens=700,
                 temperature=0.0,

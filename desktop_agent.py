@@ -349,17 +349,51 @@ def handle_tool_call(tool, args):
         return {"status": "waited", "seconds": seconds}
         
     elif tool == "open_app":
-        app_name = args.get("app_name")
+        app_name = (args.get("app_name") or "chrome").lower().strip()
+        url = args.get("url")
+        
+        if url:
+            import webbrowser
+            webbrowser.open(url)
+            return {"status": "opened_url", "url": url}
+
         if platform.system() == "Windows":
-            # Cách an toàn để mở app trên win
-            if "chrome" in app_name.lower():
-                os.startfile("chrome.exe")
-            elif "notepad" in app_name.lower():
+            if "chrome" in app_name:
+                try:
+                    os.startfile("chrome.exe")
+                except Exception:
+                    import webbrowser
+                    webbrowser.open("https://www.google.com")
+            elif "notepad" in app_name:
                 subprocess.Popen(["notepad.exe"])
+            elif "calc" in app_name:
+                subprocess.Popen(["calc.exe"])
+            elif "explorer" in app_name or "folder" in app_name:
+                subprocess.Popen(["explorer.exe"])
+            elif "cmd" in app_name:
+                subprocess.Popen(["cmd.exe"])
+            elif "powershell" in app_name:
+                subprocess.Popen(["powershell.exe"])
+            elif "msedge" in app_name or "edge" in app_name:
+                try:
+                    os.startfile("msedge.exe")
+                except Exception:
+                    import webbrowser
+                    webbrowser.open("https://www.bing.com")
+            elif "vscode" in app_name or "code" in app_name:
+                try:
+                    subprocess.Popen(["code"], shell=True)
+                except Exception:
+                    subprocess.Popen([app_name], shell=True)
             else:
-                subprocess.Popen([app_name])
+                try:
+                    os.startfile(app_name)
+                except Exception:
+                    subprocess.Popen(f'start "" "{app_name}"', shell=True)
         elif platform.system() == "Darwin":
             subprocess.Popen(["open", "-a", app_name])
+        else:
+            subprocess.Popen([app_name])
         return {"status": "opened", "app_name": app_name}
     else:
         raise ValueError(f"Unknown tool: {tool}")
@@ -517,8 +551,9 @@ async def run_agent():
                                 subprocess.Popen(["notepad.exe"])
 
                     elif msg_type == "execution":
-                        actions = data["actions"]
-                        print(f"🚀 Đang thực thi Skill: {data.get('task_name', 'Unknown')} ({len(actions)} bước)")
+                        actions = data.get("actions", [])
+                        task_name = data.get("task_name", "Unknown")
+                        print(f"🚀 Đang thực thi Skill: {task_name} ({len(actions)} bước)")
                         
                         try:
                             last_time = 0
@@ -526,22 +561,51 @@ async def run_agent():
                                 if EMERGENCY_STOP:
                                     print("🚨 Dừng thực thi khẩn cấp!")
                                     break
-                                delay = step["time"] - last_time
-                                if delay > 0:
+                                
+                                step_time = step.get("time", 0)
+                                delay = step_time - last_time
+                                if delay > 0 and delay < 10.0:  # cap delay at 10 seconds
                                     time.sleep(delay)
                                 
-                                if step["action"] == "click":
-                                    pyautogui.click(step["parameters"]["x"], step["parameters"]["y"])
-                                elif step["action"] == "type":
-                                    text = step["parameters"]["text"]
+                                act_type = step.get("action", "")
+                                params = step.get("parameters", {})
+                                
+                                if act_type == "click":
+                                    btn = str(params.get("button", "Button.left")).lower()
+                                    x, y = params.get("x"), params.get("y")
+                                    if "right" in btn:
+                                        pyautogui.rightClick(x, y)
+                                    else:
+                                        pyautogui.click(x, y)
+                                elif act_type == "double_click":
+                                    pyautogui.doubleClick(params.get("x"), params.get("y"))
+                                elif act_type == "right_click":
+                                    pyautogui.rightClick(params.get("x"), params.get("y"))
+                                elif act_type == "type":
+                                    text = params.get("text", "")
                                     if text.startswith("Key."):
                                         pyautogui.press(text.split(".")[1])
                                     else:
-                                        pyautogui.write(text)
+                                        try:
+                                            import pyperclip
+                                            pyperclip.copy(text)
+                                            pyautogui.hotkey("ctrl", "v")
+                                        except Exception:
+                                            pyautogui.write(text)
+                                elif act_type == "press":
+                                    pyautogui.press(params.get("key"))
+                                elif act_type == "hotkey":
+                                    keys = params.get("keys", [])
+                                    if keys:
+                                        pyautogui.hotkey(*keys)
+                                elif act_type == "scroll":
+                                    pyautogui.scroll(params.get("amount", 0))
+                                elif act_type == "wait":
+                                    time.sleep(float(params.get("seconds", 1)))
                                 
-                                last_time = step["time"]
+                                last_time = step_time
                             if not EMERGENCY_STOP:
-                                print("✅ Thực thi hoàn tất.")
+                                print(f"✅ Thực thi Skill '{task_name}' hoàn tất.")
                         except Exception as e:
                             print(f"❌ Lỗi thực thi: {e}")
 

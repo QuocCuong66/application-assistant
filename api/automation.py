@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, WebSocket, WebSocketDisconnect
+from fastapi.responses import FileResponse
 import json
 import os
 import logging
@@ -15,6 +16,20 @@ from config import AGENT_TOKEN
 from pydantic import BaseModel
 
 router = APIRouter(prefix="/automation", tags=["automation"])
+
+@router.get("/download_agent")
+def download_agent_file():
+    """Serves DesktopAgent.exe or desktop_agent.py for user download."""
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    exe_path = os.path.join(base_dir, "dist", "DesktopAgent.exe")
+    if os.path.exists(exe_path):
+        return FileResponse(exe_path, media_type="application/octet-stream", filename="DesktopAgent.exe")
+    
+    script_path = os.path.join(base_dir, "desktop_agent.py")
+    if os.path.exists(script_path):
+        return FileResponse(script_path, media_type="text/x-python", filename="desktop_agent.py")
+        
+    raise HTTPException(status_code=404, detail="Agent file not found.")
 
 # Quản lý kết nối WebSocket theo user_id
 class ConnectionManager:

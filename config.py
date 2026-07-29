@@ -9,6 +9,9 @@ if not OPENAI_API_KEY:
 
 OPENAI_VISION_MODEL = os.getenv("OPENAI_VISION_MODEL", "gpt-4o")
 
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-2.5-flash")
+
 AGENT_TOKEN = os.getenv("AGENT_TOKEN", "default-secret-token-123")
 
 VNPAY_TMN_CODE = os.getenv("VNPAY_TMN_CODE")
