@@ -24,7 +24,7 @@ import datetime
 from typing import Dict, Any, Optional
 
 from openai import OpenAI
-from config import OPENAI_API_KEY, OPENAI_VISION_MODEL
+from config import OPENAI_API_KEY, OPENAI_VISION_MODEL, GEMINI_API_KEY, GEMINI_MODEL
 from api.automation import manager
 from services.safety import analyze_goal_safety, analyze_action_safety
 from services.agent_memory import AgentMemory
@@ -42,15 +42,37 @@ def scale_coordinates(
     y: int,
     memory: AgentMemory,
 ) -> tuple[int, int]:
-    """Scale AI coordinates from thumbnail space to native screen space.
+    """Scale AI coordinates to native screen space.
 
-    The AI sees a resized screenshot (e.g. 1280×720) but pyautogui
-    operates in native screen resolution (e.g. 1920×1080).
+    BUGFIX: Gemini models are trained for image-grounding tasks to always
+    return coordinates normalized to a 0-1000 grid, NOT literal pixels of
+    the screenshot they were shown — this holds even when the prompt
+    explicitly asks for pixel coordinates. Previously this function always
+    assumed pixel-space input (correct for OpenAI/GPT-4o), so every Gemini
+    click was scaled as if e.g. y=500 meant "pixel 500 of a 720px-tall
+    thumbnail" when Gemini actually meant "halfway down the image" — this
+    silently sent clicks to the wrong place (often far off target,
+    especially on the Y axis where thumbnail height != 1000).
+
+    memory.coord_space selects which conversion to use:
+      - "pixel"           : x, y are thumbnail pixel coords (OpenAI/GPT-4o)
+      - "normalized_1000" : x, y are on a 0-1000 grid (Gemini's native format)
     """
-    tw = memory.screenshot_dimensions.get("width", 0)
-    th = memory.screenshot_dimensions.get("height", 0)
     sw = memory.screen_resolution.get("width", 0)
     sh = memory.screen_resolution.get("height", 0)
+
+    if memory.coord_space == "normalized_1000":
+        if sw <= 0 or sh <= 0:
+            logging.warning(
+                "Cannot scale normalized coordinates — missing screen "
+                "resolution: screen=(%s,%s). Using raw coords.", sw, sh,
+            )
+            return int(x), int(y)
+        return int(x / 1000 * sw), int(y / 1000 * sh)
+
+    # Default: pixel space (thumbnail -> native screen)
+    tw = memory.screenshot_dimensions.get("width", 0)
+    th = memory.screenshot_dimensions.get("height", 0)
 
     if tw <= 0 or th <= 0 or sw <= 0 or sh <= 0:
         logging.warning(
@@ -202,6 +224,11 @@ async def run_agent_loop(user_id: str, goal: str, db=None):
     """
     max_steps = 15
     memory = AgentMemory(goal, max_steps=max_steps)
+    # Gemini natively returns grounding coordinates on a 0-1000 grid; OpenAI
+    # vision models return literal thumbnail pixel coordinates. This flag
+    # keeps the system prompt and scale_coordinates() in sync (see bugfix
+    # note in scale_coordinates above).
+    memory.coord_space = "normalized_1000" if GEMINI_API_KEY else "pixel"
     final_message = ""
     json_error_retries = 0
     MAX_JSON_RETRIES = 2
@@ -352,7 +379,7 @@ async def run_agent_loop(user_id: str, goal: str, db=None):
                 "Try a completely different approach."
             )
 
-        system_prompt = build_system_prompt()
+        system_prompt = build_system_prompt(memory.coord_space)
         user_text = build_user_message(goal, memory, error_context)
 
         messages = [
@@ -370,7 +397,6 @@ async def run_agent_loop(user_id: str, goal: str, db=None):
         ]
 
         try:
-            from config import GEMINI_API_KEY, GEMINI_MODEL
             if GEMINI_API_KEY:
                 loop_client = OpenAI(
                     api_key=GEMINI_API_KEY,

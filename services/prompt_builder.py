@@ -70,11 +70,7 @@ When you are blocked and cannot proceed, return:
 
 ## Coordinate Rules
 
-- Coordinates are in **screenshot pixel space** (not screen space).
-- The screenshot dimensions are given in the user message.
-- Click at the CENTER of the target element.
-- If you are unsure of the exact position, look for text labels or icons
-  and estimate from there.
+{coordinate_rules}
 
 ## Mandatory Rules
 
@@ -90,9 +86,49 @@ When you are blocked and cannot proceed, return:
 """
 
 
-def build_system_prompt() -> str:
-    """Return the system prompt string."""
-    return SYSTEM_PROMPT
+# --- Coordinate rule variants ---
+# NOTE (bugfix): Gemini models are trained for image-grounding tasks to
+# ALWAYS return coordinates normalized to a 0-1000 grid, regardless of what
+# the prompt asks for. Telling Gemini "return pixel coordinates" does not
+# reliably override this trained prior, which was silently corrupting every
+# click position when GEMINI_API_KEY was set (see agent_loop.scale_coordinates).
+# OpenAI vision models, by contrast, do respect literal pixel-space instructions.
+# So instead of fighting Gemini's native behavior, we ask each backend for the
+# format it naturally produces and convert accordingly downstream.
+_COORD_RULES_PIXEL = """\
+- Coordinates are in **screenshot pixel space** (not native screen space).
+- The screenshot dimensions are given in the user message (SCREEN INFO).
+- Click at the CENTER of the target element.
+- If you are unsure of the exact position, look for text labels or icons
+  and estimate from there."""
+
+_COORD_RULES_NORMALIZED_1000 = """\
+- Coordinates are normalized to a **0-1000 by 0-1000 grid**, NOT literal
+  screenshot pixels. (0,0) is the top-left corner, (1000,1000) is the
+  bottom-right corner, regardless of the screenshot's actual pixel size.
+- Example: the exact center of the screenshot is x=500, y=500.
+- Click at the CENTER of the target element.
+- If you are unsure of the exact position, look for text labels or icons
+  and estimate from there."""
+
+
+def build_system_prompt(coord_space: str = "pixel") -> str:
+    """Return the system prompt string.
+
+    Args:
+        coord_space: "pixel" (OpenAI/GPT-4o) or "normalized_1000" (Gemini).
+            Controls which coordinate convention the model is instructed to
+            use, since this must match how the backend actually behaves.
+    """
+    rules = (
+        _COORD_RULES_NORMALIZED_1000
+        if coord_space == "normalized_1000"
+        else _COORD_RULES_PIXEL
+    )
+    # Plain string replace (NOT str.format) because SYSTEM_PROMPT contains
+    # literal JSON braces like {"x": int, "y": int} that .format() would
+    # misinterpret as placeholders.
+    return SYSTEM_PROMPT.replace("{coordinate_rules}", rules)
 
 
 # ======================================================================

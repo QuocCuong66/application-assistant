@@ -35,6 +35,11 @@ class AgentMemory:
         self.screen_resolution: Dict[str, int] = {"width": 0, "height": 0}
         self.screenshot_dimensions: Dict[str, int] = {"width": 0, "height": 0}
 
+        # --- Coordinate space of the active VLM backend ---
+        # "pixel"           -> model returns literal thumbnail pixel coords (OpenAI/GPT-4o)
+        # "normalized_1000" -> model returns coords on a 0-1000 grid (Gemini's native format)
+        self.coord_space: str = "pixel"
+
         # --- Anti-loop counters ---
         self.consecutive_wait_count: int = 0
         self.consecutive_same_action_count: int = 0
@@ -216,3 +221,4 @@ class AgentMemory:
                 f"→ {s.get('result', '?')}"
             )
         return "\n".join(lines)
+        
