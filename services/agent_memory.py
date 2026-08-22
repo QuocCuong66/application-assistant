@@ -33,6 +33,7 @@ class AgentMemory:
         # --- Screen tracking ---
         self.last_screenshot_hash: str = ""
         self.screen_resolution: Dict[str, int] = {"width": 0, "height": 0}
+        self.logical_screen_size: Dict[str, int] = {"width": 0, "height": 0}
         self.screenshot_dimensions: Dict[str, int] = {"width": 0, "height": 0}
 
         # --- Coordinate space of the active VLM backend ---
@@ -145,11 +146,16 @@ class AgentMemory:
         self,
         resolution: Dict[str, int],
         thumbnail_size: Dict[str, int],
+        logical_size: Optional[Dict[str, int]] = None,
     ) -> None:
-        """Store the native resolution and the thumbnail dimensions sent
-        to the AI, so coordinates can be scaled back."""
+        """Store native screenshot resolution, thumbnail dimensions sent to AI,
+        and logical screen size for pyautogui execution."""
         self.screen_resolution = resolution
         self.screenshot_dimensions = thumbnail_size
+        if logical_size:
+            self.logical_screen_size = logical_size
+        else:
+            self.logical_screen_size = resolution
 
     # ------------------------------------------------------------------
     # Anti-loop detection

@@ -271,13 +271,19 @@ def handle_tool_call(tool, args):
         # Chụp ảnh và resize nếu màn hình quá lớn
         screenshot = pyautogui.screenshot()
         original_size = screenshot.size
+        screen_size = pyautogui.size()
         # Thay đổi kích thước để tiết kiệm token
         screenshot.thumbnail((1280, 1280), Image.Resampling.LANCZOS)
         
         buffered = io.BytesIO()
         screenshot.save(buffered, format="PNG")
         img_str = base64.b64encode(buffered.getvalue()).decode("utf-8")
-        return {"data": img_str, "size": screenshot.size, "original_size": original_size}
+        return {
+            "data": img_str,
+            "size": screenshot.size,
+            "original_size": original_size,
+            "screen_size": (screen_size.width, screen_size.height)
+        }
         
     elif tool == "click":
         x, y = args.get("x"), args.get("y")

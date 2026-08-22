@@ -42,48 +42,43 @@ def scale_coordinates(
     y: int,
     memory: AgentMemory,
 ) -> tuple[int, int]:
-    """Scale AI coordinates to native screen space.
+    """Scale AI coordinates to pyautogui logical screen space.
 
-    BUGFIX: Gemini models are trained for image-grounding tasks to always
-    return coordinates normalized to a 0-1000 grid, NOT literal pixels of
-    the screenshot they were shown — this holds even when the prompt
-    explicitly asks for pixel coordinates. Previously this function always
-    assumed pixel-space input (correct for OpenAI/GPT-4o), so every Gemini
-    click was scaled as if e.g. y=500 meant "pixel 500 of a 720px-tall
-    thumbnail" when Gemini actually meant "halfway down the image" — this
-    silently sent clicks to the wrong place (often far off target,
-    especially on the Y axis where thumbnail height != 1000).
+    BUGFIX: PyAutoGUI actions operate in logical screen space (pyautogui.size()),
+    which may differ from physical screenshot pixel size (e.g. on High DPI / scaled displays)
+    and thumbnail image dimensions.
 
     memory.coord_space selects which conversion to use:
       - "pixel"           : x, y are thumbnail pixel coords (OpenAI/GPT-4o)
       - "normalized_1000" : x, y are on a 0-1000 grid (Gemini's native format)
     """
-    sw = memory.screen_resolution.get("width", 0)
-    sh = memory.screen_resolution.get("height", 0)
+    # Use logical screen size for pyautogui coordinates; fallback to resolution if not available
+    lw = memory.logical_screen_size.get("width", 0) or memory.screen_resolution.get("width", 0)
+    lh = memory.logical_screen_size.get("height", 0) or memory.screen_resolution.get("height", 0)
 
     if memory.coord_space == "normalized_1000":
-        if sw <= 0 or sh <= 0:
+        if lw <= 0 or lh <= 0:
             logging.warning(
-                "Cannot scale normalized coordinates — missing screen "
-                "resolution: screen=(%s,%s). Using raw coords.", sw, sh,
+                "Cannot scale normalized coordinates — missing logical screen "
+                "resolution: screen=(%s,%s). Using raw coords.", lw, lh,
             )
             return int(x), int(y)
-        return int(x / 1000 * sw), int(y / 1000 * sh)
+        return int(x / 1000 * lw), int(y / 1000 * lh)
 
-    # Default: pixel space (thumbnail -> native screen)
+    # Default: pixel space (thumbnail -> pyautogui logical screen space)
     tw = memory.screenshot_dimensions.get("width", 0)
     th = memory.screenshot_dimensions.get("height", 0)
 
-    if tw <= 0 or th <= 0 or sw <= 0 or sh <= 0:
+    if tw <= 0 or th <= 0 or lw <= 0 or lh <= 0:
         logging.warning(
             "Cannot scale coordinates — missing dimensions: "
-            "thumb=(%s,%s) screen=(%s,%s). Using raw coords.",
-            tw, th, sw, sh,
+            "thumb=(%s,%s) logical_screen=(%s,%s). Using raw coords.",
+            tw, th, lw, lh,
         )
         return int(x), int(y)
 
-    scale_x = sw / tw
-    scale_y = sh / th
+    scale_x = lw / tw
+    scale_y = lh / th
     return int(x * scale_x), int(y * scale_y)
 
 
@@ -343,6 +338,7 @@ async def run_agent_loop(user_id: str, goal: str, db=None):
         screenshot_base64 = result_data.get("data")
         thumb_size = result_data.get("size", (0, 0))
         original_size = result_data.get("original_size", thumb_size)
+        screen_size = result_data.get("screen_size")
 
         if not screenshot_base64:
             memory.record_failure("Empty screenshot data")
@@ -355,9 +351,13 @@ async def run_agent_loop(user_id: str, goal: str, db=None):
 
         # Store screen info for coordinate scaling (mitigates R13)
         if isinstance(original_size, (list, tuple)) and len(original_size) >= 2:
+            logical_dict = None
+            if isinstance(screen_size, (list, tuple)) and len(screen_size) >= 2:
+                logical_dict = {"width": int(screen_size[0]), "height": int(screen_size[1])}
             memory.set_screen_info(
                 resolution={"width": int(original_size[0]), "height": int(original_size[1])},
                 thumbnail_size={"width": int(thumb_size[0]), "height": int(thumb_size[1])},
+                logical_size=logical_dict,
             )
 
         # Stale-screen detection (mitigates R1, R2)
