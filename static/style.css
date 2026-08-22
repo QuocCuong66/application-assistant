@@ -976,33 +976,40 @@ a:focus {
 
 .btn-outline {
     flex: 1;
-    padding: 6px 12px;
-    font-size: 11px;
+    height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    font-family: 'Poppins', sans-serif;
+    font-size: 12px;
     font-weight: 600;
-    border-radius: 6px;
-    border: 1px solid var(--border-color);
-    background-color: #FFFFFF;
     cursor: pointer;
-    text-align: center;
-    transition: background-color 0.2s, border-color 0.2s;
+    transition: all 0.2s ease;
 }
-
-.btn-outline:hover {
-    background-color: #FAF9F5;
-    border-color: var(--text-muted);
-}
-
+/* Nút Pro nổi bật */
 .btn-pro {
-    border-color: rgba(59, 130, 246, 0.4);
-    color: var(--color-accent);
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+    color: #ffffff;
+    border: 1px solid transparent;
+    box-shadow: 0 2px 8px rgba(37, 99, 235, 0.25);
 }
 .btn-pro:hover {
-    background-color: #EFF6FF;
-    border-color: var(--color-accent);
+    background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
+    box-shadow: 0 4px 14px rgba(37, 99, 235, 0.35);
+    transform: translateY(-4px);
 }
-
+/* Nút Logout tinh tế */
 .btn-logout {
-    color: var(--text-secondary);
+    background: #ffffff;
+    color: #334155;
+    border: 1px solid #cbd5e1;
+}
+.btn-logout:hover {
+    color: #dc2626;
+    background-color: #fef2f2;
+    border-color: #fca5a5;
+    transform: translateY(-4px);
 }
 
 
