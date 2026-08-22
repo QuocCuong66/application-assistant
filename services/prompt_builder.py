@@ -59,6 +59,7 @@ When you are blocked and cannot proceed, return:
 | type          | parameters                         | description               |
 |---------------|------------------------------------|---------------------------|
 | click         | {"x": int, "y": int}               | Single left click         |
+| click_target  | {"target": "text", "match_type": "auto|text|name|automation_id|role", "control_type": "Button", "index": 0} | Click by UI element name/text (PREFERRED — uses Windows UI Automation for precise coords) |
 | double_click  | {"x": int, "y": int}               | Double left click         |
 | right_click   | {"x": int, "y": int}               | Right click               |
 | type_text     | {"text": "string"}                 | Type text (Unicode safe)  |
@@ -71,6 +72,18 @@ When you are blocked and cannot proceed, return:
 ## Coordinate Rules
 
 {coordinate_rules}
+
+## Screen Reading (IMPORTANT)
+
+When UI ELEMENTS are listed in the user message, **strongly prefer `click_target`**
+over raw `click` with guessed coordinates.  The screen reader reads the Windows
+accessibility tree (and browser DOM via Chrome/Edge accessibility) to get exact
+click positions.
+
+- Use `click_target` with the exact visible label/text of the button, link, or menu item.
+- Set `match_type` to "text" for partial text match, "automation_id" for HTML id.
+- Only use raw `click` with x,y when no matching element exists in the UI list.
+- For browser pages, links and buttons appear in the element list with their visible text.
 
 ## Mandatory Rules
 
@@ -165,6 +178,18 @@ def build_user_message(
         f"Screenshot dimensions (coordinate space): {tw}×{th}"
     )
 
+    # --- UI Elements from screen reader ---
+    ui_ctx = getattr(memory, "screen_context", None)
+    if ui_ctx and ui_ctx.get("elements"):
+        win = ui_ctx.get("window", {})
+        browser_note = " (browser — DOM accessible via UI Automation)" if win.get("is_browser") else ""
+        parts.append(
+            f"## UI ELEMENTS{browser_note}\n"
+            f"Window: {win.get('title', '?')} [{win.get('process', '?')}]\n"
+            f"Use click_target with these labels for precise clicks:\n"
+            + _format_ui_elements(ui_ctx["elements"])
+        )
+
     # --- Progress ---
     parts.append(
         f"## PROGRESS\n"
@@ -229,6 +254,19 @@ def _build_anti_loop_hints(memory: "AgentMemory") -> str:
         )
 
     return "\n".join(hints)
+
+
+def _format_ui_elements(elements: List[dict], max_items: int = 40) -> str:
+    """Format compact UI element list for the prompt."""
+    lines: List[str] = []
+    for el in elements[:max_items]:
+        name = el.get("name") or el.get("id") or "(unnamed)"
+        etype = el.get("type", "?")
+        x, y = el.get("x", "?"), el.get("y", "?")
+        lines.append(f'  - [{etype}] "{name}" @ ({x},{y})')
+    if len(elements) > max_items:
+        lines.append(f"  ... and {len(elements) - max_items} more elements")
+    return "\n".join(lines) if lines else "  (no interactive elements detected)"
 
 
 # ======================================================================

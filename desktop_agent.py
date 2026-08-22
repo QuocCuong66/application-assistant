@@ -4,7 +4,10 @@ import os
 
 # --- TỰ ĐỘNG CÀI ĐẶT THƯ VIỆN ---
 def install_dependencies():
-    required = ["websockets", "pyautogui", "pynput", "Pillow", "pyperclip", "requests", "python-dotenv"]
+    required = [
+        "websockets", "pyautogui", "pynput", "Pillow", "pyperclip",
+        "requests", "python-dotenv", "uiautomation",
+    ]
     import_names = {
         "Pillow": "PIL",
         "python-dotenv": "dotenv",
@@ -32,6 +35,21 @@ import requests
 from PIL import Image
 from dotenv import load_dotenv
 import getpass
+
+try:
+    from screen_reader import (
+        get_screen_context,
+        resolve_click_target,
+        find_elements,
+        scan_ui_elements,
+        is_available as screen_reader_available,
+    )
+except ImportError:
+    screen_reader_available = lambda: False
+    get_screen_context = None
+    resolve_click_target = None
+    find_elements = None
+    scan_ui_elements = None
 
 load_dotenv()
 
@@ -348,6 +366,65 @@ def handle_tool_call(tool, args):
             time.sleep(0.1)
         return {"status": "waited", "seconds": seconds}
         
+    elif tool == "scan_screen":
+        if not screen_reader_available() or get_screen_context is None:
+            return {"available": False, "error": "Screen reader chỉ hỗ trợ Windows + uiautomation"}
+        max_el = int(args.get("max_elements", 80))
+        return get_screen_context(max_elements=max_el)
+
+    elif tool == "find_target":
+        if not screen_reader_available() or resolve_click_target is None:
+            return {"found": False, "error": "Screen reader không khả dụng"}
+        target = args.get("target", "")
+        match_type = args.get("match_type", "auto")
+        control_type = args.get("control_type")
+        index = int(args.get("index", 0))
+        use_ocr = args.get("use_ocr_fallback", True)
+        result = resolve_click_target(
+            target=target,
+            match_type=match_type,
+            control_type=control_type,
+            index=index,
+            use_ocr_fallback=use_ocr,
+        )
+        if result:
+            return {"found": True, **result}
+        return {"found": False, "target": target}
+
+    elif tool == "click_target":
+        if not screen_reader_available() or resolve_click_target is None:
+            return {"status": "error", "error": "Screen reader không khả dụng"}
+        target = args.get("target", "")
+        match_type = args.get("match_type", "auto")
+        control_type = args.get("control_type")
+        index = int(args.get("index", 0))
+        button = args.get("button", "left")
+
+        resolved = resolve_click_target(
+            target=target,
+            match_type=match_type,
+            control_type=control_type,
+            index=index,
+        )
+        if not resolved:
+            return {"status": "not_found", "target": target}
+
+        x, y = resolved["x"], resolved["y"]
+        if button == "right":
+            pyautogui.rightClick(x, y)
+        elif button == "double":
+            pyautogui.doubleClick(x, y)
+        else:
+            pyautogui.click(x, y)
+        return {
+            "status": "clicked",
+            "x": x, "y": y,
+            "target": target,
+            "matched_name": resolved.get("name", ""),
+            "confidence": resolved.get("confidence", 0),
+            "source": resolved.get("source", "uia"),
+        }
+
     elif tool == "open_app":
         app_name = (args.get("app_name") or "chrome").lower().strip()
         url = args.get("url")

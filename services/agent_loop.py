@@ -118,6 +118,20 @@ def build_tool_call_v2(
         real_x, real_y = scale_coordinates(int(raw_x), int(raw_y), memory)
         return {"tool": atype, "args": {"x": real_x, "y": real_y}}
 
+    # --- click_target: resolve via screen reader on desktop agent ---
+    if atype == "click_target":
+        target = (params.get("target") or "").strip()
+        if not target:
+            raise ValueError("click_target requires non-empty 'target' parameter.")
+        tool_args: Dict[str, Any] = {
+            "target": target,
+            "match_type": params.get("match_type", "auto"),
+            "index": int(params.get("index", 0)),
+        }
+        if params.get("control_type"):
+            tool_args["control_type"] = params["control_type"]
+        return {"tool": "click_target", "args": tool_args}
+
     if atype == "type_text":
         text = params.get("text", "")
         if not text:
@@ -362,6 +376,27 @@ async def run_agent_loop(user_id: str, goal: str, db=None):
 
         # Stale-screen detection (mitigates R1, R2)
         memory.update_screenshot_hash(screenshot_base64)
+
+        # --- Screen reader: quét UI elements cho tọa độ chính xác ---
+        scan_result = await manager.send_command_and_wait(
+            user_id,
+            {"type": "tool_call", "tool": "scan_screen", "args": {"max_elements": 80}},
+            timeout=10,
+        )
+        if scan_result.get("success"):
+            ctx = scan_result.get("result", {})
+            if ctx.get("elements"):
+                memory.screen_context = ctx
+                yield json.dumps({
+                    "type": "log",
+                    "state": "observing",
+                    "message": (
+                        f"Screen reader: {ctx.get('element_count', 0)} UI elements "
+                        f"in '{ctx.get('window', {}).get('title', '?')}'"
+                    ),
+                }) + "\n"
+        else:
+            memory.screen_context = None
 
         # ==============================================================
         # PLAN — call AI with screenshot + memory

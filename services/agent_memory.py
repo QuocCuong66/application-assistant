@@ -34,6 +34,7 @@ class AgentMemory:
         self.last_screenshot_hash: str = ""
         self.screen_resolution: Dict[str, int] = {"width": 0, "height": 0}
         self.screenshot_dimensions: Dict[str, int] = {"width": 0, "height": 0}
+        self.screen_context: Optional[Dict[str, Any]] = None
 
         # --- Coordinate space of the active VLM backend ---
         # "pixel"           -> model returns literal thumbnail pixel coords (OpenAI/GPT-4o)
@@ -180,6 +181,8 @@ class AgentMemory:
                 dx = abs(params.get("x", 0) - prev_params.get("x", 0))
                 dy = abs(params.get("y", 0) - prev_params.get("y", 0))
                 is_same = dx <= 10 and dy <= 10
+            elif is_same and atype == "click_target":
+                is_same = params.get("target") == prev_params.get("target")
             elif is_same:
                 is_same = params == prev_params
 
