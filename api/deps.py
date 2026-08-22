@@ -31,33 +31,28 @@ def get_current_user(x_token: str = Header(None), db = Depends(get_db)):
     return user
 
 def check_usage_limit(current_user: dict = Depends(get_current_user), db = Depends(get_db)):
-    today = datetime.date.today()
+    today_str = datetime.date.today().isoformat()
     usages = db.usage
     # Find usage document for this user
-    usage = usages.find_one({"user_id": current_user["id"]})  # Note: we stored user_id as string? Let's check.
-    # In the user document, we don't have a user_id field, we have _id. We'll store the user's _id as string in usage.
-    # Alternatively, we can store the ObjectId in usage. Let's be consistent and store as string for simplicity.
-    # We'll adjust: when we create a usage document, we'll set user_id to the string of the user's _id.
+    usage = usages.find_one({"user_id": current_user["id"]})
 
     if not usage:
         usage_doc = {
             "user_id": current_user["id"],
             "request_count": 0,
-            "last_reset_date": today
+            "last_reset_date": today_str
         }
         result = usages.insert_one(usage_doc)
         usage_doc["_id"] = result.inserted_id
         usage = usage_doc
-    else:
-        # usage is a dict from MongoDB
-        pass
 
-    if usage["last_reset_date"] < today:
-        usages.update_one({"_id": usage["_id"]}, {"$set": {"request_count": 0, "last_reset_date": today}})
+    last_reset = str(usage.get("last_reset_date", ""))
+    if last_reset < today_str:
+        usages.update_one({"_id": usage["_id"]}, {"$set": {"request_count": 0, "last_reset_date": today_str}})
         usage["request_count"] = 0
-        usage["last_reset_date"] = today
+        usage["last_reset_date"] = today_str
 
-    if not current_user["is_pro"] and usage["request_count"] >= 20:
+    if not current_user.get("is_pro", False) and usage.get("request_count", 0) >= 20:
         raise HTTPException(status_code=403, detail="Daily request limit exceeded. Upgrade to pro for unlimited requests.")
 
     return usage

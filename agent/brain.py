@@ -1,5 +1,5 @@
 from openai import OpenAI
-from config import OPENAI_API_KEY
+from config import OPENAI_API_KEY, GEMINI_API_KEY, GEMINI_MODEL
 import logging
 
 
@@ -7,8 +7,15 @@ from typing import List, Dict, Optional
 
 class Brain:
     def __init__(self):
-        self.client = OpenAI(api_key=OPENAI_API_KEY)
-        self.model = "gpt-4o-mini"
+        if GEMINI_API_KEY:
+            self.client = OpenAI(
+                api_key=GEMINI_API_KEY,
+                base_url="https://generativelanguage.googleapis.com/v1beta/openai/"
+            )
+            self.model = GEMINI_MODEL or "gemini-2.5-flash"
+        else:
+            self.client = OpenAI(api_key=OPENAI_API_KEY or "dummy-key")
+            self.model = "gpt-4o-mini"
 
     def process_message(
         self,

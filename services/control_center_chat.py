@@ -255,7 +255,7 @@ async def run_control_center_chat(user_id: str, message: str, db=None) -> AsyncG
             return
 
     # Check trained skills in MongoDB (Auto Skill AT)
-    if db:
+    if db is not None:
         from agent.planner import Planner
         planner = Planner()
         matched_task = planner.match_trained_task(message, db, user_id)
@@ -334,7 +334,7 @@ async def run_control_center_chat(user_id: str, message: str, db=None) -> AsyncG
 
     # Fetch recent conversation history context for Task Memory (TM skill)
     history_msgs = []
-    if db:
+    if db is not None:
         try:
             recent_docs = list(db.message_history.find({"user_id": user_id}).sort("timestamp", -1).limit(6))
             recent_docs.reverse()
