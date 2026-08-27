@@ -202,13 +202,19 @@ def delete_message(
     current_user: dict = Depends(get_current_user)
 ):
     """Deletes a single message from history for the current user."""
+    result = None
     try:
         obj_id = ObjectId(message_id)
+        result = db.message_history.delete_one({"_id": obj_id, "user_id": current_user["id"]})
     except Exception:
-        raise HTTPException(status_code=400, detail="Invalid message ID format.")
+        pass
 
-    result = db.message_history.delete_one({"_id": obj_id, "user_id": current_user["id"]})
-    if result.deleted_count == 0:
+    if result is None or result.deleted_count == 0:
+        import urllib.parse
+        decoded = urllib.parse.unquote(message_id)
+        result = db.message_history.delete_one({"message": decoded, "user_id": current_user["id"]})
+
+    if result is None or result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Message not found or not authorized.")
 
     return {"message": "Message deleted successfully.", "id": message_id}

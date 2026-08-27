@@ -63,13 +63,90 @@ function scrollToMessage(messageId) {
     }
 }
 
-// --- Editable & Persistent Chat Title ---
+// --- Editable & Persistent Chat Title (Inline Word-style) ---
+let isEditingChatTitle = false;
+let originalChatTitle = "";
+
 function editChatTitle() {
     const titleEl = document.getElementById("chatTitle");
-    const current = titleEl ? titleEl.innerText.trim() : "Application Assistant";
-    const newTitle = prompt("Nhập tên mới cho trợ lý (Chat Title):", current);
-    if (newTitle !== null && newTitle.trim() !== "") {
-        saveChatTitle(newTitle.trim());
+    const btnEl = document.querySelector(".btn-edit-title");
+    if (!titleEl) return;
+
+    if (isEditingChatTitle) {
+        // Đang sửa mà bấm nút lần nữa thì Lưu lại
+        finishEditingChatTitle(true);
+        return;
+    }
+
+    isEditingChatTitle = true;
+    originalChatTitle = titleEl.innerText.trim();
+    titleEl.contentEditable = "true";
+    titleEl.spellcheck = false;
+    titleEl.classList.add("chat-title-editing");
+    titleEl.focus();
+
+    // Bôi đen toàn bộ text giống Microsoft Word để người dùng có thể gõ đè ngay
+    try {
+        const range = document.createRange();
+        range.selectNodeContents(titleEl);
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+    } catch (e) {
+        console.error(e);
+    }
+
+    // Đổi icon sang dấu tích xanh (Checkmark) để xác nhận
+    if (btnEl) {
+        btnEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10B981" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>`;
+        btnEl.title = "Lưu tên trợ lý (Nhấn Enter)";
+    }
+
+    // Phím Enter để lưu, Escape để hủy
+    titleEl.onkeydown = (e) => {
+        if (e.key === "Enter") {
+            e.preventDefault();
+            finishEditingChatTitle(true);
+        } else if (e.key === "Escape") {
+            e.preventDefault();
+            finishEditingChatTitle(false);
+        }
+    };
+
+    // Khi click chuột ra ngoài (blur) thì tự động lưu
+    titleEl.onblur = () => {
+        setTimeout(() => {
+            if (isEditingChatTitle) {
+                finishEditingChatTitle(true);
+            }
+        }, 150);
+    };
+}
+
+function finishEditingChatTitle(shouldSave) {
+    const titleEl = document.getElementById("chatTitle");
+    const btnEl = document.querySelector(".btn-edit-title");
+    if (!titleEl) return;
+
+    isEditingChatTitle = false;
+    titleEl.contentEditable = "false";
+    titleEl.classList.remove("chat-title-editing");
+
+    // Khôi phục lại icon bút chì
+    if (btnEl) {
+        btnEl.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>`;
+        btnEl.title = "Đổi tên trợ lý";
+    }
+
+    if (shouldSave) {
+        const newTitle = titleEl.innerText.trim();
+        if (newTitle && newTitle !== originalChatTitle) {
+            saveChatTitle(newTitle);
+        } else if (!newTitle) {
+            titleEl.innerText = originalChatTitle || "Application Assistant";
+        }
+    } else {
+        titleEl.innerText = originalChatTitle;
     }
 }
 
@@ -676,11 +753,22 @@ function setAvatarState(state) {
 
 
 function updateStatusUI(isPro) {
+    const starSvg = `<svg class="pro-star-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="#F59E0B" stroke="#D97706" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon></svg>`;
+    const proHtml = `${starSvg}<span>Pro Account</span>${starSvg}`;
+
     const statusEl = document.getElementById("userStatus");
+    if (statusEl) {
+        statusEl.innerHTML = proHtml;
+        statusEl.className = "user-tier status-pro";
+    }
+
+    const headerStatusEl = document.getElementById("headerUserStatus");
+    if (headerStatusEl) {
+        headerStatusEl.innerHTML = proHtml;
+        headerStatusEl.className = "user-tier status-pro chat-header-pro";
+    }
+
     const upgradeBtn = document.querySelector(".btn-pro");
-    if (!statusEl) return;
-    statusEl.innerText = "⭐ Pro Account";
-    statusEl.className = "user-tier status-pro";
     if (upgradeBtn) upgradeBtn.style.display = "none";
 }
 
@@ -1136,15 +1224,21 @@ async function deleteRecentItem(itemId) {
             headers: { "X-Token": token }
         });
         if (res.status === 200) {
-            showAlert("Đã xóa tin nhắn khỏi lịch sử.");
-            loadHistory();
+            showAlert("Đã xóa cuộc trò chuyện khỏi lịch sử.");
+            // Reload history in background to keep data in sync
+            const histRes = await fetch(`${API_URL}/history`, { headers: { "X-Token": token } });
+            if (histRes.status === 200) {
+                const data = await histRes.json();
+                renderRecentConversations(data);
+            }
         } else {
             const data = await res.json().catch(() => ({}));
             showAlert(data.detail || "Không thể xóa tin nhắn.");
+            loadHistory();
         }
     } catch (e) {
         console.error(e);
-        showAlert("Lỗi kết nối.");
+        showAlert("Lỗi kết nối khi xóa.");
     }
 }
 
@@ -1153,9 +1247,9 @@ function renderRecentConversations(data) {
     if (!list) return;
     list.innerHTML = "";
     
-    const recentItems = data.slice(0, 10);
+    const recentItems = (data || []).slice(0, 15);
     if (recentItems.length === 0) {
-        list.innerHTML = `<li class="recent-empty">No recent chats</li>`;
+        list.innerHTML = `<li class="recent-empty">Chưa có cuộc trò chuyện</li>`;
         return;
     }
     
@@ -1165,7 +1259,7 @@ function renderRecentConversations(data) {
         
         const icon = document.createElement("span");
         icon.className = "recent-icon";
-        icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
+        icon.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>`;
         
         const text = document.createElement("span");
         text.className = "recent-text";
@@ -1174,13 +1268,29 @@ function renderRecentConversations(data) {
         
         const delBtn = document.createElement("button");
         delBtn.className = "btn-recent-delete";
-        delBtn.title = "Xóa tin nhắn này";
+        delBtn.title = "Xóa cuộc trò chuyện này";
         delBtn.setAttribute("aria-label", "Delete recent chat");
-        delBtn.innerHTML = `✕`;
+        // Biểu tượng thùng rác xóa trực quan
+        delBtn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>`;
+        
         delBtn.onclick = async (e) => {
             e.stopPropagation();
-            if (!confirm("Bạn có chắc muốn xóa tin nhắn này khỏi lịch sử?")) return;
-            await deleteRecentItem(item.id);
+            const previewMsg = item.message.length > 20 ? item.message.slice(0, 18) + "..." : item.message;
+            if (!confirm(`Bạn có chắc muốn xóa "${previewMsg}" khỏi lịch sử?`)) return;
+            
+            // Hiệu ứng mờ dần và trượt mượt lập tức trên giao diện
+            li.style.transition = "all 0.2s ease";
+            li.style.opacity = "0";
+            li.style.transform = "translateX(-12px)";
+            setTimeout(() => {
+                li.remove();
+                if (list.children.length === 0) {
+                    list.innerHTML = `<li class="recent-empty">Chưa có cuộc trò chuyện</li>`;
+                }
+            }, 200);
+
+            const targetId = item.id || encodeURIComponent(item.message);
+            await deleteRecentItem(targetId);
         };
 
         li.append(icon, text, delBtn);
