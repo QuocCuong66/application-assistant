@@ -262,6 +262,39 @@ function setFeedbackButtonState(actionsEl, messageId) {
     }
 }
 
+async function deleteSingleMessage(dbId, aiRow) {
+    if (!confirm("Delete this message?")) return;
+    if (!dbId) {
+        const prevRow = aiRow?.previousElementSibling;
+        if (prevRow && prevRow.classList.contains("user-row")) {
+            prevRow.remove();
+        }
+        if (aiRow) aiRow.remove();
+        return;
+    }
+    try {
+        const res = await fetch(`${API_URL}/history/${dbId}`, {
+            method: "DELETE",
+            headers: { "X-Token": token }
+        });
+        if (res.status === 200) {
+            const prevRow = aiRow?.previousElementSibling;
+            if (prevRow && prevRow.classList.contains("user-row")) {
+                prevRow.remove();
+            }
+            if (aiRow) aiRow.remove();
+            showAlert("Message deleted.");
+            loadHistory();
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showAlert(data.detail || "Failed to delete message.");
+        }
+    } catch (e) {
+        console.error(e);
+        showAlert("Connection error.");
+    }
+}
+
 function appendChatMessage(chatBox, role, label, message, options = {}) {
     const isUser = role === "user";
     const row = document.createElement("div");
@@ -292,6 +325,7 @@ function appendChatMessage(chatBox, role, label, message, options = {}) {
     if (!isUser) {
         const messageId = options.messageId || `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const userPrompt = options.userPrompt || "";
+        const dbId = options.dbId || null;
         row.dataset.messageId = messageId;
         if (userPrompt) row.dataset.userPrompt = userPrompt;
 
@@ -316,7 +350,8 @@ function appendChatMessage(chatBox, role, label, message, options = {}) {
                 });
                 dislikeBtn.dataset.action = "dislike";
                 return dislikeBtn;
-            })()
+            })(),
+            createMessageActionButton("🗑️", "Delete message", () => deleteSingleMessage(dbId, row))
         );
 
         setFeedbackButtonState(actions, messageId);
@@ -944,6 +979,7 @@ async function clearChat() {
             document.getElementById("agentLogs").innerHTML = "";
             document.getElementById("agentLogsContainer").classList.add("hidden");
             document.getElementById("confirmationBox").classList.add("hidden");
+            renderRecentConversations([]);
             showAlert("Chat cleared.");
             return;
         }
@@ -1006,7 +1042,8 @@ async function loadHistory() {
             appendChatMessage(chatBox, "user", "You", item.message);
             appendChatMessage(chatBox, "ai", "AI", item.response, {
                 userPrompt: item.message,
-                messageId: `hist-${index}-${item.id || index}`
+                messageId: `hist-${index}-${item.id || index}`,
+                dbId: item.id || null
             });
         });
         chatBox.scrollTop = chatBox.scrollHeight;

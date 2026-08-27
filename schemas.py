@@ -31,6 +31,7 @@ class ChatResponse(BaseModel):
     action_result: Optional[str] = None
 
 class HistoryItem(BaseModel):
+    id: Optional[str] = None
     message: str
     response: str
     timestamp: datetime.datetime
