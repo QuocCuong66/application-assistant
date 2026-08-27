@@ -22,7 +22,7 @@ from services.intent_router import (
     execution_message,
     is_confirmation,
 )
-from services.pending_actions import clear_pending, get_pending, set_pending
+from services.pending_actions import clear_pending, get_pending, set_pending, pop_pending
 
 brain = Brain()
 
@@ -218,7 +218,7 @@ async def run_control_center_chat(user_id: str, message: str, db=None) -> AsyncG
                 return
 
             logging.info("User confirmed pending action for %s", user_id)
-            action = clear_pending(user_id)
+            action = pop_pending(user_id)
             yield _yield_line({
                 "type": "log",
                 "state": "thinking",
@@ -373,7 +373,7 @@ async def execute_pending_for_user(user_id: str) -> Dict[str, Any]:
             "skill_status": "ready",
         }
 
-    action = clear_pending(user_id)
+    action = pop_pending(user_id)
     result = await execute_desktop_action(user_id, action)
     if result.get("success"):
         tool = action.get("tool")
