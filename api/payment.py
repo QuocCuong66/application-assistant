@@ -6,7 +6,7 @@ import uuid
 from bson import ObjectId
 
 from database import get_db
-from schemas import PaymentCreateRequest, PaymentUrlResponse
+from schemas import PaymentCreateRequest, PaymentUrlResponse, PromoCodeRequest
 from api.deps import get_current_user
 from api.vnpay_utils import generate_vnpay_signature, verify_vnpay_signature
 from config import VNPAY_TMN_CODE, VNPAY_URL, VNPAY_RETURN_URL
@@ -59,6 +59,23 @@ def create_payment_url(
     payment_url = f"{VNPAY_URL}?{query_string}"
 
     return PaymentUrlResponse(url=payment_url)
+
+
+@router.post("/upgrade_code")
+def upgrade_with_code(
+    request: PromoCodeRequest,
+    db = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    code = (request.code or "").strip().lower()
+    if code != "qcdzai":
+        raise HTTPException(status_code=400, detail="Mã nâng cấp không chính xác.")
+
+    users = db.users
+    user_id = current_user["id"]
+    users.update_one({"_id": ObjectId(user_id)}, {"$set": {"is_pro": True}})
+
+    return {"message": "Nâng cấp Pro thành công!", "is_pro": True}
 
 
 @router.get("/vnpay_return")

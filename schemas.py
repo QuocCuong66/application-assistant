@@ -31,6 +31,7 @@ class ChatResponse(BaseModel):
     action_result: Optional[str] = None
 
 class HistoryItem(BaseModel):
+    id: Optional[str] = None
     message: str
     response: str
     timestamp: datetime.datetime
@@ -47,6 +48,9 @@ class PaymentCreateRequest(BaseModel):
 
 class PaymentUrlResponse(BaseModel):
     url: str
+
+class PromoCodeRequest(BaseModel):
+    code: str
 
 class TrainedTaskCreate(BaseModel):
     name: str

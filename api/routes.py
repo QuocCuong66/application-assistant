@@ -176,6 +176,7 @@ def get_history(
     for doc in history_cursor:
         # Convert MongoDB document to HistoryItem format
         history_list.append(HistoryItem(
+            id=str(doc.get("_id")) if doc.get("_id") else None,
             message=doc.get("message", ""),
             response=doc.get("response", ""),
             timestamp=doc.get("timestamp", datetime.datetime.now(datetime.timezone.utc))
@@ -192,6 +193,25 @@ def clear_history(
     """Deletes chat history for the current user."""
     result = db.message_history.delete_many({"user_id": current_user["id"]})
     return {"message": "Chat history cleared.", "deleted_count": result.deleted_count}
+
+
+@router.delete("/history/{message_id}")
+def delete_message(
+    message_id: str,
+    db = Depends(get_db),
+    current_user: dict = Depends(get_current_user)
+):
+    """Deletes a single message from history for the current user."""
+    try:
+        obj_id = ObjectId(message_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid message ID format.")
+
+    result = db.message_history.delete_one({"_id": obj_id, "user_id": current_user["id"]})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Message not found or not authorized.")
+
+    return {"message": "Message deleted successfully.", "id": message_id}
 
 
 @router.get("/mongo/{collection_name}")
