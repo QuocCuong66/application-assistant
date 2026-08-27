@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -10,11 +11,14 @@
     <!-- Google Fonts: Nunito & Poppins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&family=Poppins:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;800&family=Poppins:wght@400;600;700&family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
     <!-- Icon Boxicons -->
     <link href="https://unpkg.com/boxicons@2.1.4/css/boxicons.min.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
     <!-- Floating Toolbar for Skill Training (Clean/Minimal style) -->
     <div id="floatingToolbar" class="hidden floating-toolbar" role="status" aria-label="Skill Lab Recording Status">
@@ -38,35 +42,53 @@
             <div class="auth-logo-wrapper">
                 <span class="auth-logo">QC</span>
             </div>
-            
+
             <h2 class="auth-title">Application Assistant</h2>
             <p class="auth-subtitle">Sign in to control desktop automation</p>
-            
+
             <div class="auth-form-groups">
                 <div class="form-group">
                     <label for="username" class="sr-only">Username or Email</label>
                     <div class="input-with-icon">
                         <span class="input-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path><circle cx="12" cy="7" r="4"></circle></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="12" cy="7" r="4"></circle>
+                            </svg>
                         </span>
-                        <input type="text" id="username" placeholder="Email or Username" required autocomplete="username">
+                        <input type="text" id="username" placeholder="Email or Username" required
+                            autocomplete="username">
                     </div>
                 </div>
-                
+
                 <div class="form-group password-group">
                     <label for="password" class="sr-only">Password</label>
                     <div class="input-with-icon">
                         <span class="input-icon">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                                <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                            </svg>
                         </span>
-                        <input type="password" id="password" placeholder="Password" required autocomplete="current-password">
-                        <button type="button" onclick="togglePassword()" class="btn-toggle-pwd" aria-label="Toggle Password Visibility">
-                            <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+                        <input type="password" id="password" placeholder="Password" required
+                            autocomplete="current-password">
+                        <button type="button" onclick="togglePassword()" class="btn-toggle-pwd"
+                            aria-label="Toggle Password Visibility">
+                            <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="18" height="18"
+                                viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                                <circle cx="12" cy="12" r="3"></circle>
+                            </svg>
                         </button>
                     </div>
                 </div>
             </div>
-            
+
             <div class="auth-actions">
                 <button onclick="login()" class="btn btn-primary">Sign In</button>
                 <button onclick="register()" class="btn-link">Don't have an account? Sign Up</button>
@@ -76,36 +98,60 @@
 
     <!-- App Section -->
     <div id="appSection" class="hidden app-shell">
-        
+
         <!-- LEFT SIDEBAR -->
         <aside id="sidebar" class="sidebar" aria-label="Main Navigation">
             <div class="sidebar-header">
                 <div class="logo">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="logo-icon"><path d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12c0-3.3 1.59-6.229 4.045-8.035"/><path d="M12 6v6l4 2"/></svg>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"
+                        class="logo-icon">
+                        <path
+                            d="M12 2a10 10 0 0 1 10 10c0 5.523-4.477 10-10 10S2 17.523 2 12c0-3.3 1.59-6.229 4.045-8.035" />
+                        <path d="M12 6v6l4 2" />
+                    </svg>
                     <span>Assistant</span>
                 </div>
                 <button onclick="toggleSidebar()" class="btn-sidebar-toggle-close" aria-label="Close sidebar">✕</button>
             </div>
-            
+
             <button id="newChatBtn" onclick="clearChat()" class="btn-new-chat" aria-label="Start a new chat session">
-                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"></line>
+                    <line x1="5" y1="12" x2="19" y2="12"></line>
+                </svg>
                 <span>New Chat</span>
             </button>
-            
+
             <div class="sidebar-scroll-container">
                 <!-- Recent Conversations -->
                 <section class="sidebar-section" aria-labelledby="heading-recent">
-                    <h3 id="heading-recent" class="sidebar-heading">Recent Conversations</h3>
+                    <div class="section-title-row">
+                        <h3 id="heading-recent" class="sidebar-heading">Recent Conversations</h3>
+                        <button onclick="clearChat()" class="btn-sidebar-action btn-clear-recent"
+                            title="Clear all recent conversations" aria-label="Clear all chats">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <polyline points="3 6 5 6 21 6"></polyline>
+                                <path
+                                    d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2">
+                                </path>
+                            </svg>
+                        </button>
+                    </div>
                     <ul id="recentConversations" class="recent-list">
                         <!-- Dynamically populated from script.js -->
                     </ul>
                 </section>
-                
+
                 <!-- Projects (Learned Skills / Automation Tasks) -->
                 <section class="sidebar-section" aria-labelledby="heading-projects">
                     <div class="section-title-row">
                         <h3 id="heading-projects" class="sidebar-heading">Projects</h3>
-                        <button onclick="startTraining()" class="btn-sidebar-action" title="Train New Skill" aria-label="Train new skill">+</button>
+                        <button onclick="startTraining()" class="btn-sidebar-action" title="Train New Skill"
+                            aria-label="Train new skill">+</button>
                     </div>
                     <ul id="taskList" class="projects-list">
                         <!-- Dynamically populated from script.js -->
@@ -168,18 +214,32 @@
                     </ul>
                 </section>
             </div>
-            
+
             <!-- Settings & Profile Section (Bottom) -->
             <div class="sidebar-footer">
                 <div class="user-strip">
                     <div class="user-avatar" aria-hidden="true">QC</div>
                     <div class="user-details">
-                        <span class="user-id" id="userIdDisplay">Loading...</span>
-                        <span class="user-tier" id="userStatus">Free Access</span>
+                        <span class="user-tier status-pro" id="userStatus">
+                            <svg class="pro-star-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12"
+                                viewBox="0 0 24 24" fill="#F59E0B" stroke="#D97706" stroke-width="1.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polygon
+                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                                </polygon>
+                            </svg>
+                            <span>Pro</span>
+                            <svg class="pro-star-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12"
+                                viewBox="0 0 24 24" fill="#F59E0B" stroke="#D97706" stroke-width="1.5"
+                                stroke-linecap="round" stroke-linejoin="round">
+                                <polygon
+                                    points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                                </polygon>
+                            </svg>
+                        </span>
                     </div>
                 </div>
                 <div class="footer-actions">
-                    <button class="btn btn-outline btn-pro" onclick="upgradePro()">Upgrade to Pro</button>
                     <button class="btn btn-outline btn-logout" onclick="logout()">Logout</button>
                 </div>
             </div>
@@ -187,18 +247,52 @@
 
         <!-- RIGHT PANEL (Main Chat Dashboard) -->
         <main class="right-panel" aria-label="Chat and Automation Interface">
-            
+
             <!-- Chat Header -->
             <header class="chat-header">
                 <div class="header-left">
                     <button onclick="toggleSidebar()" class="btn-menu-toggle" aria-label="Toggle Navigation Sidebar">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="3" y1="12" x2="21" y2="12"></line>
+                            <line x1="3" y1="6" x2="21" y2="6"></line>
+                            <line x1="3" y1="18" x2="21" y2="18"></line>
+                        </svg>
                     </button>
-                    <h2 class="chat-title">Application Assistant</h2>
+                    <div class="chat-title-container">
+                        <h2 class="chat-title chat-tittle" id="chatTitle" title="Click để đổi tên"
+                            onclick="editChatTitle()">Application Assistant</h2>
+                        <button onclick="editChatTitle()" class="btn-edit-title" title="Đổi tên trợ lý"
+                            aria-label="Rename assistant">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-                
+
                 <!-- Agent Panel Status Bar (Top-Right) -->
                 <div class="header-right">
+                    <span class="user-tier status-pro chat-header-pro" id="headerUserStatus">
+                        <svg class="pro-star-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12"
+                            viewBox="0 0 24 24" fill="#F59E0B" stroke="#D97706" stroke-width="1.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polygon
+                                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                            </polygon>
+                        </svg>
+                        <span>Pro</span>
+                        <svg class="pro-star-icon" xmlns="http://www.w3.org/2000/svg" width="12" height="12"
+                            viewBox="0 0 24 24" fill="#F59E0B" stroke="#D97706" stroke-width="1.5"
+                            stroke-linecap="round" stroke-linejoin="round">
+                            <polygon
+                                points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2">
+                            </polygon>
+                        </svg>
+                    </span>
                     <div id="avatarContainer" class="avatar-container state-idle" role="status" aria-live="polite">
                         <span id="avatarLabel" class="status-label">Ready</span>
                     </div>
@@ -223,12 +317,13 @@
                     <span class="agent-live-dot" aria-hidden="true"></span>
                 </div>
                 <ul id="agentLogs" class="agent-logs-list"></ul>
-                
+
                 <!-- Confirmation Prompt Box -->
                 <div id="confirmationBox" class="confirmation-box hidden">
                     <span id="confirmationText">AI requires confirmation to proceed.</span>
                     <div class="confirmation-actions">
-                        <button type="button" onclick="confirmAction('confirm')" class="btn btn-confirm">Confirm</button>
+                        <button type="button" onclick="confirmAction('confirm')"
+                            class="btn btn-confirm">Confirm</button>
                         <button type="button" onclick="confirmAction('cancel')" class="btn btn-cancel">Cancel</button>
                     </div>
                 </div>
@@ -247,32 +342,76 @@
             <footer class="input-container">
                 <div class="input-box-wrapper">
                     <!-- Text-to-Speech Stop Indicator (Floating near input box) -->
-                    <button type="button" id="stopSpeakBtn" onclick="stopSpeaking()" class="hidden btn btn-stop-speak" aria-label="Stop AI voice output">
+                    <button type="button" id="stopSpeakBtn" onclick="stopSpeaking()" class="hidden btn btn-stop-speak"
+                        aria-label="Stop AI voice output">
                         🛑 Stop Speaking
                     </button>
-                    
+
+                    <!-- Meta Messenger-Style Reply Preview Bar -->
+                    <div id="replyPreviewBar" class="hidden reply-preview-bar">
+                        <div class="reply-preview-content">
+                            <div class="reply-preview-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24"
+                                    fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round">
+                                    <polyline points="9 17 4 12 9 7"></polyline>
+                                    <path d="M20 18v-2a4 4 0 0 0-4-4H4"></path>
+                                </svg>
+                            </div>
+                            <div class="reply-preview-info">
+                                <span class="reply-preview-sender" id="replyPreviewSender">Đang trả lời AI</span>
+                                <span class="reply-preview-text" id="replyPreviewText">Nội dung tin nhắn...</span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="cancelReply()" class="btn-cancel-reply" title="Hủy trả lời"
+                            aria-label="Cancel reply">&times;</button>
+                    </div>
+
                     <div class="input-box">
                         <!-- Attachment Button -->
                         <button type="button" id="attachBtn" class="btn-input-action" aria-label="Attach File">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path
+                                    d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48" />
+                            </svg>
                         </button>
-                        
+
                         <!-- Text Input -->
-                        <input type="text" id="messageInput" placeholder="How can I help you today?" autocomplete="off" aria-label="Command input field">
-                        
+                        <input type="text" id="messageInput" placeholder="How can I help you today?" autocomplete="off"
+                            aria-label="Command input field">
+
                         <!-- Voice Command Button -->
-                        <button type="button" id="recordBtn" onclick="toggleRecording()" class="btn-input-action" aria-label="Speak voice command">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></svg>
+                        <button type="button" id="recordBtn" onclick="toggleRecording()" class="btn-input-action"
+                            aria-label="Speak voice command">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z" />
+                                <path d="M19 10v2a7 7 0 0 1-14 0v-2" />
+                                <line x1="12" x2="12" y1="19" y2="22" />
+                            </svg>
                         </button>
-                        
+
                         <!-- Stop Execution Button -->
-                        <button type="button" onclick="stopAgent()" class="btn-input-action btn-stop-agent" title="Stop execution" aria-label="Stop agent execution">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="4" width="16" height="16" rx="2" ry="2"/></svg>
+                        <button type="button" onclick="stopAgent()" class="btn-input-action btn-stop-agent"
+                            title="Stop execution" aria-label="Stop agent execution">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="currentColor">
+                                <rect x="4" y="4" width="16" height="16" rx="2" ry="2" />
+                            </svg>
                         </button>
 
                         <!-- Send Button -->
-                        <button type="button" id="sendBtn" onclick="sendMessage()" class="btn-send" aria-label="Send message">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+                        <button type="button" id="sendBtn" onclick="sendMessage()" class="btn-send"
+                            aria-label="Send message">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+                                fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                                stroke-linejoin="round">
+                                <line x1="22" y1="2" x2="11" y2="13"></line>
+                                <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -281,7 +420,8 @@
     </div>
 
     <!-- Floating Download Agent Banner for First-Time Users -->
-    <div id="downloadAgentBanner" class="hidden download-agent-banner" role="region" aria-label="Download Desktop Agent">
+    <div id="downloadAgentBanner" class="hidden download-agent-banner" role="region"
+        aria-label="Download Desktop Agent">
         <div class="download-banner-icon">🤖</div>
         <div class="download-banner-content">
             <span class="download-banner-title">Tải Desktop Agent</span>
@@ -289,10 +429,16 @@
         </div>
         <div class="download-banner-actions">
             <button onclick="downloadDesktopAgent()" class="btn btn-primary btn-download-agent">
-                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                    stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
+                </svg>
                 Tải Agent (.exe)
             </button>
-            <button onclick="dismissDownloadAgentBanner()" class="btn-close-banner" title="Ẩn thông báo" aria-label="Dismiss download banner">&times;</button>
+            <button onclick="dismissDownloadAgentBanner()" class="btn-close-banner" title="Ẩn thông báo"
+                aria-label="Dismiss download banner">&times;</button>
         </div>
     </div>
 
@@ -303,4 +449,5 @@
     <script src="/static/script.js" defer></script>
     <script defer src="/_vercel/insights/script.js"></script>
 </body>
+
 </html>

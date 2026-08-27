@@ -33,7 +33,7 @@ def register(request: AuthRequest, db: dict = Depends(get_db)):
         "username": request.username,
         "password": hashed_password,
         "token": None,
-        "is_pro": False,
+        "is_pro": True,
         "created_at": datetime.now(timezone.utc)
     }
     result = users.insert_one(user_doc)
@@ -55,10 +55,8 @@ def login(request: AuthRequest, db: dict = Depends(get_db)):
     # Generate simple token (in a real app, this should be a JWT)
     token = str(uuid.uuid4())
 
-    # Save token to db
-    users.update_one({"_id": user["_id"]}, {"$set": {"token": token}})
+    # Save token to db and ensure user is Pro
+    users.update_one({"_id": user["_id"]}, {"$set": {"token": token, "is_pro": True}})
 
     # Prepare response
-    # Convert ObjectId to string for the id field
-    user_id = str(user["_id"])
-    return TokenResponse(token=token, is_pro=user["is_pro"])
+    return TokenResponse(token=token, is_pro=True)

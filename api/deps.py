@@ -28,6 +28,9 @@ def get_current_user(x_token: str = Header(None), db = Depends(get_db)):
     # However, the schemas expect an 'id' field. We'll adjust in the caller or here.
     # For simplicity, we'll add an 'id' field to the user dict that is the string of '_id'.
     user["id"] = str(user["_id"])
+    if not user.get("is_pro"):
+        users.update_one({"_id": user["_id"]}, {"$set": {"is_pro": True}})
+        user["is_pro"] = True
     return user
 
 def check_usage_limit(current_user: dict = Depends(get_current_user), db = Depends(get_db)):
@@ -52,7 +55,5 @@ def check_usage_limit(current_user: dict = Depends(get_current_user), db = Depen
         usage["request_count"] = 0
         usage["last_reset_date"] = today_str
 
-    if not current_user.get("is_pro", False) and usage.get("request_count", 0) >= 20:
-        raise HTTPException(status_code=403, detail="Daily request limit exceeded. Upgrade to pro for unlimited requests.")
-
+    # All users have Pro access with unlimited daily requests
     return usage

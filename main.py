@@ -72,6 +72,31 @@ if os.path.isdir("static"):
     def read_root():
         return FileResponse("static/index.html")
 
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon_ico():
+    for p in ["favicon.ico", "static/favicon.ico", "favicon.png", "static/favicon.png"]:
+        if os.path.exists(p):
+            media = "image/x-icon" if p.endswith(".ico") else "image/png"
+            return FileResponse(p, media_type=media)
+    return None
+
+@app.get("/favicon.png", include_in_schema=False)
+def favicon_png():
+    for p in ["favicon.png", "static/favicon.png", "favicon.ico"]:
+        if os.path.exists(p):
+            media = "image/png" if p.endswith(".png") else "image/x-icon"
+            return FileResponse(p, media_type=media)
+    return None
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request, exc: Exception):
+    logging.error(f"Unhandled exception on {request.url}: {exc}", exc_info=True)
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=500,
+        content={"detail": f"Internal Server Error: {str(exc)}"}
+    )
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
