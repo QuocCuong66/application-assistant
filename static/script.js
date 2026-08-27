@@ -26,6 +26,108 @@ function escapeHtml(value) {
 let lastUserPrompt = "";
 let chatRequestInFlight = false;
 
+// --- Meta Messenger-Style Reply Context ---
+let activeReplyContext = null;
+
+function startReply(sender, text, messageId) {
+    activeReplyContext = {
+        id: messageId || "",
+        sender: sender || "Message",
+        text: String(text || "").trim()
+    };
+    const bar = document.getElementById("replyPreviewBar");
+    const senderEl = document.getElementById("replyPreviewSender");
+    const textEl = document.getElementById("replyPreviewText");
+    if (bar && senderEl && textEl) {
+        senderEl.textContent = `Đang trả lời ${activeReplyContext.sender}`;
+        textEl.textContent = activeReplyContext.text.length > 80 ? activeReplyContext.text.slice(0, 77) + "..." : activeReplyContext.text;
+        bar.classList.remove("hidden");
+    }
+    const input = document.getElementById("messageInput");
+    if (input) input.focus();
+}
+
+function cancelReply() {
+    activeReplyContext = null;
+    const bar = document.getElementById("replyPreviewBar");
+    if (bar) bar.classList.add("hidden");
+}
+
+function scrollToMessage(messageId) {
+    if (!messageId) return;
+    const target = document.querySelector(`[data-message-id="${messageId}"]`) || document.getElementById(messageId);
+    if (target) {
+        target.scrollIntoView({ behavior: "smooth", block: "center" });
+        target.classList.add("message-highlight-flash");
+        setTimeout(() => target.classList.remove("message-highlight-flash"), 1800);
+    }
+}
+
+// --- Editable & Persistent Chat Title ---
+function editChatTitle() {
+    const titleEl = document.getElementById("chatTitle");
+    const current = titleEl ? titleEl.innerText.trim() : "Application Assistant";
+    const newTitle = prompt("Nhập tên mới cho trợ lý (Chat Title):", current);
+    if (newTitle !== null && newTitle.trim() !== "") {
+        saveChatTitle(newTitle.trim());
+    }
+}
+
+function saveChatTitle(title) {
+    const titleEl = document.getElementById("chatTitle");
+    if (titleEl) titleEl.innerText = title;
+    document.title = title;
+    localStorage.setItem("custom_chat_title", title);
+    showAlert(`Đã đổi tên trợ lý thành "${title}"`);
+}
+
+function loadChatTitle() {
+    const saved = localStorage.getItem("custom_chat_title");
+    if (saved) {
+        const titleEl = document.getElementById("chatTitle");
+        if (titleEl) titleEl.innerText = saved;
+        document.title = saved;
+    }
+}
+
+// --- Interactive Agent Skills ---
+const SKILL_PROMPT_EXAMPLES = {
+    DC: "Mở ứng dụng Google Chrome",
+    VC: "Bật chế độ điều khiển bằng giọng nói",
+    WA: "Tìm kiếm trên Google thông tin về công nghệ AI mới nhất",
+    SA: "Chụp màn hình và phân tích nội dung đang hiển thị",
+    RA: "Tự động hóa: Mở Notepad và ghi chú 'Xin chào tôi là AI Assistant'",
+    TM: "Nhắc lại tác vụ gần nhất mà chúng ta vừa thực hiện",
+    AT: "start_training"
+};
+
+function initSkillCardInteractions() {
+    document.querySelectorAll(".skill-card[data-skill]").forEach(card => {
+        const skillId = card.dataset.skill;
+        card.style.cursor = "pointer";
+        card.setAttribute("role", "button");
+        card.title = `Click để dùng tính năng ${card.querySelector('.skill-name')?.textContent || skillId}`;
+        card.onclick = () => {
+            if (skillId === "AT") {
+                startTraining();
+                showAlert("Đã mở phòng huấn luyện Skill (AI Training Lab)!");
+                return;
+            }
+            if (skillId === "VC") {
+                toggleRecording();
+                return;
+            }
+            const promptText = SKILL_PROMPT_EXAMPLES[skillId] || "";
+            const input = document.getElementById("messageInput");
+            if (input && promptText) {
+                input.value = promptText;
+                input.focus();
+                showAlert(`Đã chọn tính năng: ${card.querySelector('.skill-name')?.textContent || skillId}`);
+            }
+        };
+    });
+}
+
 const FEEDBACK_STORAGE_KEY = "chat_message_feedback";
 
 function configureMarkdown() {
@@ -176,6 +278,7 @@ function finalizeStreamingAiBubble(chatBox, text, userPrompt) {
         const actions = document.createElement("div");
         actions.className = "message-actions";
         actions.append(
+            createMessageActionButton("↩", "Trả lời tin nhắn này", () => startReply("AI", text, messageId)),
             createMessageActionButton("Copy", "Copy response", () => copyMessageText(text)),
             createMessageActionButton("↻", "Regenerate response", () =>
                 regenerateFromPrompt(userPrompt || lastUserPrompt, row)
@@ -299,6 +402,9 @@ function appendChatMessage(chatBox, role, label, message, options = {}) {
     const isUser = role === "user";
     const row = document.createElement("div");
     row.className = `chat-row ${isUser ? "user-row" : "ai-row"}`;
+    const messageId = options.messageId || `${role}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    row.dataset.messageId = messageId;
+    row.id = messageId;
 
     const avatar = document.createElement("span");
     avatar.className = "chat-avatar";
@@ -307,6 +413,28 @@ function appendChatMessage(chatBox, role, label, message, options = {}) {
 
     const wrap = document.createElement("div");
     wrap.className = "chat-bubble-wrap";
+
+    // If this message is a reply to another message, render Meta Messenger quote card!
+    if (options.replyTo && options.replyTo.text) {
+        const quoteBox = document.createElement("div");
+        quoteBox.className = "chat-reply-quote";
+        quoteBox.setAttribute("role", "button");
+        quoteBox.title = "Click để cuộn tới tin nhắn gốc";
+        
+        const quoteSender = document.createElement("span");
+        quoteSender.className = "reply-quote-sender";
+        quoteSender.textContent = options.replyTo.sender ? `Trả lời ${options.replyTo.sender}` : "Trả lời";
+
+        const quoteText = document.createElement("span");
+        quoteText.className = "reply-quote-snippet";
+        quoteText.textContent = options.replyTo.text.length > 90 ? options.replyTo.text.slice(0, 87) + "..." : options.replyTo.text;
+
+        quoteBox.append(quoteSender, quoteText);
+        if (options.replyTo.id) {
+            quoteBox.onclick = () => scrollToMessage(options.replyTo.id);
+        }
+        wrap.appendChild(quoteBox);
+    }
 
     const messageEl = document.createElement("div");
     messageEl.className = `${role}-message chat-message`;
@@ -323,16 +451,15 @@ function appendChatMessage(chatBox, role, label, message, options = {}) {
     wrap.appendChild(messageEl);
 
     if (!isUser) {
-        const messageId = options.messageId || `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
         const userPrompt = options.userPrompt || "";
         const dbId = options.dbId || null;
-        row.dataset.messageId = messageId;
         if (userPrompt) row.dataset.userPrompt = userPrompt;
 
         const actions = document.createElement("div");
         actions.className = "message-actions";
 
         actions.append(
+            createMessageActionButton("↩", "Trả lời tin nhắn này", () => startReply("AI", message, messageId)),
             createMessageActionButton("Copy", "Copy response", () => copyMessageText(message)),
             createMessageActionButton("↻", "Regenerate response", () => regenerateFromPrompt(userPrompt || lastUserPrompt, row)),
             (() => {
@@ -355,6 +482,15 @@ function appendChatMessage(chatBox, role, label, message, options = {}) {
         );
 
         setFeedbackButtonState(actions, messageId);
+        wrap.appendChild(actions);
+    } else {
+        // User message actions (Reply + Copy)
+        const actions = document.createElement("div");
+        actions.className = "message-actions user-actions";
+        actions.append(
+            createMessageActionButton("↩", "Trả lời tin nhắn này", () => startReply("You", message, messageId)),
+            createMessageActionButton("Copy", "Copy text", () => copyMessageText(message))
+        );
         wrap.appendChild(actions);
     }
 
@@ -508,12 +644,9 @@ window.onload = () => {
     pingBackend();
     startKeepAlive();
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const paymentStatus = urlParams.get("payment");
-    if (paymentStatus === "success") {
-        alert("Payment Successful!");
-        window.history.replaceState({}, document.title, "/");
-    }
+    loadChatTitle();
+    initSkillCardInteractions();
+
     if (token) showApp();
 };
 
@@ -546,15 +679,9 @@ function updateStatusUI(isPro) {
     const statusEl = document.getElementById("userStatus");
     const upgradeBtn = document.querySelector(".btn-pro");
     if (!statusEl) return;
-    if (isPro) {
-        statusEl.innerText = "Pro Account";
-        statusEl.className = "status-pro";
-        if (upgradeBtn) upgradeBtn.style.display = "none";
-    } else {
-        statusEl.innerText = "Free Access";
-        statusEl.className = "status-free";
-        if (upgradeBtn) upgradeBtn.style.display = "block";
-    }
+    statusEl.innerText = "⭐ Pro Account";
+    statusEl.className = "user-tier status-pro";
+    if (upgradeBtn) upgradeBtn.style.display = "none";
 }
 
 async function register() {
@@ -665,6 +792,8 @@ async function showApp() {
     }
     loadHistory();
     loadTrainedTasks();
+    loadChatTitle();
+    initSkillCardInteractions();
 }
 
 async function loadTrainedTasks() {
@@ -793,8 +922,11 @@ async function sendMessage(presetMessage, options = {}) {
     const chatBox = document.getElementById("chatBox");
     lastUserPrompt = msg;
 
+    const replyContext = activeReplyContext;
+    cancelReply();
+
     if (!options.skipUserBubble) {
-        appendChatMessage(chatBox, "user", "You", msg);
+        appendChatMessage(chatBox, "user", "You", msg, { replyTo: replyContext });
     }
     if (input) input.value = "";
 
@@ -806,11 +938,15 @@ async function sendMessage(presetMessage, options = {}) {
     const logsUl = document.getElementById("agentLogs");
     logsUl.innerHTML = "";
 
+    const outboundMessage = replyContext
+        ? `[Trả lời ${replyContext.sender}: "${replyContext.text.slice(0, 120)}"]\n${msg}`
+        : msg;
+
     try {
         const res = await fetch(`${API_URL}/agent/chat`, {
             method: "POST",
             headers: { "Content-Type": "application/json", "X-Token": token },
-            body: JSON.stringify({ message: msg })
+            body: JSON.stringify({ message: outboundMessage })
         });
 
         if (res.status === 400 || res.status === 500) {
@@ -992,6 +1128,26 @@ async function clearChat() {
     }
 }
 
+async function deleteRecentItem(itemId) {
+    if (!itemId) return;
+    try {
+        const res = await fetch(`${API_URL}/history/${itemId}`, {
+            method: "DELETE",
+            headers: { "X-Token": token }
+        });
+        if (res.status === 200) {
+            showAlert("Đã xóa tin nhắn khỏi lịch sử.");
+            loadHistory();
+        } else {
+            const data = await res.json().catch(() => ({}));
+            showAlert(data.detail || "Không thể xóa tin nhắn.");
+        }
+    } catch (e) {
+        console.error(e);
+        showAlert("Lỗi kết nối.");
+    }
+}
+
 function renderRecentConversations(data) {
     const list = document.getElementById("recentConversations");
     if (!list) return;
@@ -1016,7 +1172,18 @@ function renderRecentConversations(data) {
         text.textContent = item.message.length > 28 ? item.message.slice(0, 25) + "..." : item.message;
         text.title = item.message;
         
-        li.append(icon, text);
+        const delBtn = document.createElement("button");
+        delBtn.className = "btn-recent-delete";
+        delBtn.title = "Xóa tin nhắn này";
+        delBtn.setAttribute("aria-label", "Delete recent chat");
+        delBtn.innerHTML = `✕`;
+        delBtn.onclick = async (e) => {
+            e.stopPropagation();
+            if (!confirm("Bạn có chắc muốn xóa tin nhắn này khỏi lịch sử?")) return;
+            await deleteRecentItem(item.id);
+        };
+
+        li.append(icon, text, delBtn);
         li.addEventListener("click", () => {
             const input = document.getElementById("messageInput");
             if (input) {
@@ -1052,39 +1219,7 @@ async function loadHistory() {
 
 
 async function upgradePro() {
-    const codeInput = prompt("Nhập mã nâng cấp Pro (hoặc để trống để thanh toán VNPay):");
-    if (codeInput === null) return;
-
-    const trimmedCode = codeInput.trim();
-    if (trimmedCode !== "") {
-        try {
-            const res = await fetch(`${API_URL}/payment/upgrade_code`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json", "X-Token": token },
-                body: JSON.stringify({ code: trimmedCode })
-            });
-            const data = await res.json();
-            if (res.status === 200) {
-                showAlert(data.message || "Nâng cấp Pro thành công!");
-                updateStatusUI(true);
-            } else {
-                showAlert(data.detail || "Mã nâng cấp không chính xác.");
-            }
-        } catch (e) {
-            console.error(e);
-            showAlert("Lỗi kết nối.");
-        }
-        return;
-    }
-
-    const res = await fetch(`${API_URL}/payment/create_url`, {
-        method: "POST", headers: { "Content-Type": "application/json", "X-Token": token },
-        body: JSON.stringify({ amount: 50000 })
-    });
-    if (res.status === 200) {
-        const data = await res.json();
-        window.location.href = data.url;
-    }
+    showAlert("Tài khoản của bạn đã có đặc quyền Pro vĩnh viễn!");
 }
 
 function stopSpeaking() {

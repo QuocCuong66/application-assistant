@@ -95,7 +95,12 @@
             <div class="sidebar-scroll-container">
                 <!-- Recent Conversations -->
                 <section class="sidebar-section" aria-labelledby="heading-recent">
-                    <h3 id="heading-recent" class="sidebar-heading">Recent Conversations</h3>
+                    <div class="section-title-row">
+                        <h3 id="heading-recent" class="sidebar-heading">Recent Conversations</h3>
+                        <button onclick="clearChat()" class="btn-sidebar-action btn-clear-recent" title="Clear all recent conversations" aria-label="Clear all chats">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                        </button>
+                    </div>
                     <ul id="recentConversations" class="recent-list">
                         <!-- Dynamically populated from script.js -->
                     </ul>
@@ -175,11 +180,10 @@
                     <div class="user-avatar" aria-hidden="true">QC</div>
                     <div class="user-details">
                         <span class="user-id" id="userIdDisplay">Loading...</span>
-                        <span class="user-tier" id="userStatus">Free Access</span>
+                        <span class="user-tier status-pro" id="userStatus">⭐ Pro Account</span>
                     </div>
                 </div>
                 <div class="footer-actions">
-                    <button class="btn btn-outline btn-pro" onclick="upgradePro()">Upgrade to Pro</button>
                     <button class="btn btn-outline btn-logout" onclick="logout()">Logout</button>
                 </div>
             </div>
@@ -194,7 +198,12 @@
                     <button onclick="toggleSidebar()" class="btn-menu-toggle" aria-label="Toggle Navigation Sidebar">
                         <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="3" y1="12" x2="21" y2="12"></line><line x1="3" y1="6" x2="21" y2="6"></line><line x1="3" y1="18" x2="21" y2="18"></line></svg>
                     </button>
-                    <h2 class="chat-title">Application Assistant</h2>
+                    <div class="chat-title-container">
+                        <h2 class="chat-title chat-tittle" id="chatTitle" title="Click để đổi tên" onclick="editChatTitle()">Application Assistant</h2>
+                        <button onclick="editChatTitle()" class="btn-edit-title" title="Đổi tên trợ lý" aria-label="Rename assistant">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>
+                        </button>
+                    </div>
                 </div>
                 
                 <!-- Agent Panel Status Bar (Top-Right) -->
@@ -250,6 +259,20 @@
                     <button type="button" id="stopSpeakBtn" onclick="stopSpeaking()" class="hidden btn btn-stop-speak" aria-label="Stop AI voice output">
                         🛑 Stop Speaking
                     </button>
+                    
+                    <!-- Meta Messenger-Style Reply Preview Bar -->
+                    <div id="replyPreviewBar" class="hidden reply-preview-bar">
+                        <div class="reply-preview-content">
+                            <div class="reply-preview-icon">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 17 4 12 9 7"></polyline><path d="M20 18v-2a4 4 0 0 0-4-4H4"></path></svg>
+                            </div>
+                            <div class="reply-preview-info">
+                                <span class="reply-preview-sender" id="replyPreviewSender">Đang trả lời AI</span>
+                                <span class="reply-preview-text" id="replyPreviewText">Nội dung tin nhắn...</span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="cancelReply()" class="btn-cancel-reply" title="Hủy trả lời" aria-label="Cancel reply">&times;</button>
+                    </div>
                     
                     <div class="input-box">
                         <!-- Attachment Button -->

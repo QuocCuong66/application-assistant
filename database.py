@@ -3,6 +3,9 @@ import os
 from pymongo import MongoClient
 from dotenv import load_dotenv
 
+# Ensure .env is loaded from project root
+env_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+load_dotenv(env_path)
 load_dotenv()
 
 MONGO_URI = os.getenv("MONGO_URI", "").strip('"')
@@ -11,48 +14,57 @@ MONGO_DB_NAME = os.getenv("MONGO_DB_NAME", "CuongProAI").strip('"')
 mongo_client = None
 mongo_db = None
 
-if MONGO_URI:
+def init_db():
+    global mongo_client, mongo_db
+    uri = os.getenv("MONGO_URI", "").strip('"') or MONGO_URI
+    db_name = os.getenv("MONGO_DB_NAME", "CuongProAI").strip('"') or MONGO_DB_NAME
+
+    if not uri:
+        logging.warning("MONGO_URI not configured; skipping MongoDB connection.")
+        return None
+
+    client_kwargs = {
+        "serverSelectionTimeoutMS": 10000,
+        "tls": True,
+    }
+
     try:
-        # Tối ưu kết nối cho Vercel/Serverless
-        client_kwargs = {
-            "serverSelectionTimeoutMS": 5000,
-            "tls": True,
-            "tlsAllowInvalidCertificates": False # Luôn ưu tiên bảo mật
-        }
+        import certifi
+        client_kwargs["tlsCAFile"] = certifi.where()
+    except Exception:
+        pass
 
-        # Nếu gặp lỗi SSL trên Vercel, đôi khi cần dùng certifi
-        try:
-            import certifi
-            client_kwargs["tlsCAFile"] = certifi.where()
-        except ImportError:
-            pass
-
-        mongo_client = MongoClient(MONGO_URI, **client_kwargs)
-        mongo_client.admin.command("ping")
-        mongo_db = mongo_client[MONGO_DB_NAME]
-        logging.info(f"Connected to MongoDB database '{MONGO_DB_NAME}'")
+    # Try standard secure connection
+    try:
+        client = MongoClient(uri, **client_kwargs)
+        client.admin.command("ping")
+        mongo_client = client
+        mongo_db = client[db_name]
+        logging.info(f"Connected to MongoDB database '{db_name}'")
+        return mongo_db
     except Exception as e:
-        logging.error(f"Could not connect to MongoDB: {e}")
-        # Thử lại với tùy chọn linh hoạt hơn nếu lỗi handshake (chỉ dùng khi thực sự cần thiết)
-        if "SSL handshake failed" in str(e) or "internal error" in str(e):
-            try:
-                logging.info("Retrying MongoDB connection with flexible TLS options...")
-                mongo_client = MongoClient(MONGO_URI, serverSelectionTimeoutMS=5000, tls=True, tlsInsecure=True)
-                mongo_client.admin.command("ping")
-                mongo_db = mongo_client[MONGO_DB_NAME]
-                logging.info(f"Connected to MongoDB (Insecure Mode)")
-            except Exception as e2:
-                logging.error(f"MongoDB retry failed: {e2}")
-                mongo_client = None
-                mongo_db = None
-        else:
+        logging.warning(f"Initial MongoDB connection attempt error: {e}. Retrying with flexible TLS...")
+        try:
+            client = MongoClient(uri, serverSelectionTimeoutMS=10000, tls=True, tlsAllowInvalidCertificates=True)
+            client.admin.command("ping")
+            mongo_client = client
+            mongo_db = client[db_name]
+            logging.info(f"Connected to MongoDB database '{db_name}' (Flexible TLS Mode)")
+            return mongo_db
+        except Exception as e2:
+            logging.error(f"MongoDB retry connection failed: {e2}")
             mongo_client = None
             mongo_db = None
-else:
-    logging.info("MONGO_URI not set; skipping MongoDB connection.")
+            return None
 
-# Dependency
+# Attempt connection on module load
+init_db()
+
+# Dependency with automatic reconnect
 def get_db():
+    global mongo_db
     if mongo_db is None:
-        raise RuntimeError("Database not connected")
+        init_db()
+    if mongo_db is None:
+        raise RuntimeError("Database not connected. Please check internet connection and MONGO_URI.")
     return mongo_db
