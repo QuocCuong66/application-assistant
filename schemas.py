@@ -49,6 +49,9 @@ class PaymentCreateRequest(BaseModel):
 class PaymentUrlResponse(BaseModel):
     url: str
 
+class PromoCodeRequest(BaseModel):
+    code: str
+
 class TrainedTaskCreate(BaseModel):
     name: str
 

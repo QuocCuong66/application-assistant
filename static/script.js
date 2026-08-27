@@ -1052,6 +1052,31 @@ async function loadHistory() {
 
 
 async function upgradePro() {
+    const codeInput = prompt("Nhập mã nâng cấp Pro (hoặc để trống để thanh toán VNPay):");
+    if (codeInput === null) return;
+
+    const trimmedCode = codeInput.trim();
+    if (trimmedCode !== "") {
+        try {
+            const res = await fetch(`${API_URL}/payment/upgrade_code`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", "X-Token": token },
+                body: JSON.stringify({ code: trimmedCode })
+            });
+            const data = await res.json();
+            if (res.status === 200) {
+                showAlert(data.message || "Nâng cấp Pro thành công!");
+                updateStatusUI(true);
+            } else {
+                showAlert(data.detail || "Mã nâng cấp không chính xác.");
+            }
+        } catch (e) {
+            console.error(e);
+            showAlert("Lỗi kết nối.");
+        }
+        return;
+    }
+
     const res = await fetch(`${API_URL}/payment/create_url`, {
         method: "POST", headers: { "Content-Type": "application/json", "X-Token": token },
         body: JSON.stringify({ amount: 50000 })
