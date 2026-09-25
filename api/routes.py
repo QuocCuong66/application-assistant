@@ -5,6 +5,7 @@ import datetime
 from typing import List, Dict, Any
 from agent.brain import Brain
 from agent.planner import Planner
+import asyncio
 import logging
 import json
 import tempfile
@@ -96,7 +97,7 @@ async def chat_endpoint(
                     action_result = "Desktop action queued"
             else:
                 from services.control_center_chat import CONTROL_SYSTEM
-                ai_response = brain.process_message(user_message, CONTROL_SYSTEM)
+                ai_response = await asyncio.to_thread(brain.process_message, user_message, CONTROL_SYSTEM)
                 action_result = None
 
     # Increment usage count in MongoDB

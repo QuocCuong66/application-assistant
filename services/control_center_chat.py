@@ -346,13 +346,16 @@ async def run_control_center_chat(user_id: str, message: str, db=None) -> AsyncG
         except Exception as e:
             logging.warning("Failed to fetch chat history context: %s", e)
 
+    reply = ""
     try:
-        reply = await asyncio.to_thread(brain.process_message, message, CONTROL_SYSTEM, history_msgs)
+        async for delta in brain.stream_message(message, CONTROL_SYSTEM, history_msgs):
+            reply += delta
+            yield _yield_line({"type": "partial", "state": "thinking", "message": reply})
     except Exception as e:
         logging.error("Brain error: %s", e)
+    if not reply:
         reply = "Sorry, I could not process that request right now."
-    async for line in _stream_text_fake(reply):
-        yield line
+    yield _yield_line({"type": "final", "state": "completed", "message": reply})
     yield _yield_line({"type": "intent", "skill_id": "AT", "skill_status": "ready"})
     _save_history(db, user_id, message, reply)
 
